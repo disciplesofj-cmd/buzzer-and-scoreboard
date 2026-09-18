@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>교회 학교 멀티방 성경퀴즈 부저 & 수직 레이스</title>
+  <title>교회 학교 각종 대회 부저 & 실시간 점수판</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK (v9 compat) -->
@@ -25,7 +25,7 @@
     /* 🌄 같은 폴더에 넣은 cross-bg.jpg를 레이스 배경으로 빈틈없이(Cover) 적용 */
     .custom-race-bg {
       background: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.5)), 
-                  url('cross-bg.jpg');
+                  url('cross-bg.png');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -39,37 +39,37 @@
     
     <!-- 1. 로그인 화면 -->
     <div id="login-screen" class="bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-md mx-auto w-full text-center">
-      <h1 class="text-2xl font-bold mb-2 text-yellow-400">📖 멀티방 성경퀴즈 부저</h1>
+      <h1 class="text-2xl font-bold mb-2 text-yellow-400">📖 Buzzer & Scoreboard</h1>
       <p class="text-slate-400 text-sm mb-6">입장할 방을 선택하고 정보를 입력하세요.</p>
       
       <div class="space-y-4 text-left">
         <div>
           <label class="block text-sm mb-1 text-slate-300">진행 중인 방 선택</label>
           <select id="select-room" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white font-bold text-yellow-300">
-            <option value="">-- 관리자가 만든 방을 불러오는 중... --</option>
+            <option value="">-- 진행자가 만든 방을 불러오는 중... --</option>
           </select>
         </div>
         <div>
           <label class="block text-sm mb-1 text-slate-300">소속 반 / 팀 이름</label>
-          <input type="text" id="input-group" placeholder="예: 중등 1반" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
+          <input type="text" id="input-group" placeholder="예: 반or팀전인 경우 여기에 반or팀명을 쓰시오." class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
         </div>
         <div>
           <label class="block text-sm mb-1 text-slate-300">이름</label>
-          <input type="text" id="input-name" placeholder="예: 김요한" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
+          <input type="text" id="input-name" placeholder="예: 개인 전인 경우 여기에 이름을 쓰시오." class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
         </div>
         <button onclick="joinGame()" class="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg transition shadow-lg mt-2">
           참여하기
         </button>
         <button onclick="toggleAdminLogin()" class="w-full py-2 bg-transparent hover:bg-slate-700 text-slate-400 text-xs rounded-lg transition mt-4">
-          관리자(선생님) 모드로 접속
+          진행자 모드
         </button>
       </div>
     </div>
 
-    <!-- 관리자 비밀번호 모달 -->
+    <!-- 진행자 비밀번호 모달 -->
     <div id="admin-login-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4">
       <div class="bg-slate-800 p-6 rounded-xl max-w-xs w-full text-center">
-        <h3 class="font-bold mb-3 text-sm">관리자 비밀번호 입력</h3>
+        <h3 class="font-bold mb-3 text-sm">비밀번호 입력</h3>
         <input type="password" id="admin-pw" placeholder="비밀번호" class="w-full px-3 py-2 bg-slate-700 rounded text-center mb-3 text-sm">
         <div class="flex gap-2">
           <button onclick="verifyAdmin()" class="flex-1 bg-yellow-500 text-slate-950 py-2 rounded text-sm font-bold">확인</button>
@@ -78,10 +78,10 @@
       </div>
     </div>
 
-    <!-- 관리자 대시보드 -->
+    <!-- 진행자 대시보드 -->
     <div id="admin-dashboard" class="hidden bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-lg mx-auto w-full">
       <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-        <h2 class="text-xl font-bold text-yellow-400">🛠️ 관리자 방 대시보드</h2>
+        <h2 class="text-xl font-bold text-yellow-400">🛠️ 진행자 방 대시보드</h2>
         <button onclick="logout()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">로그아웃</button>
       </div>
 
@@ -111,7 +111,7 @@
         </div>
         <div class="flex items-center gap-2">
           <span id="role-badge" class="px-3 py-1 bg-blue-600 text-xs rounded-full font-bold">참가자</span>
-          <button onclick="toggleRaceView(true)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded-lg font-bold transition shadow">🚩 푯대를 향한 질주 (레이스)</button>
+          <button onclick="toggleRaceView(true)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded-lg font-bold transition shadow">🚩실시간 순위</button>
           <button onclick="logout()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">나가기</button>
         </div>
       </div>
@@ -125,7 +125,7 @@
             <span id="winner-text" class="text-2xl md:text-3xl font-black text-white mt-1 block"></span>
           </div>
 
-          <div id="buzzer-status-text" class="text-slate-400 text-sm mb-4 font-medium">관리자의 시작 신호를 기다리세요...</div>
+          <div id="buzzer-status-text" class="text-slate-400 text-sm mb-4 font-medium">진행자의 시작 신호를 기다리세요...</div>
 
           <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
             class="w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-400 font-black text-2xl md:text-3xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
@@ -135,14 +135,14 @@
 
         <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-base text-yellow-400 flex items-center gap-1">📊 실시간 참가자 점수판</h2>
-            <span class="text-xs text-slate-400">목록 관리 연동</span>
+            <h2 class="font-bold text-base text-yellow-400 flex items-center gap-1">📊 실시간 점수판</h2>
+            <span class="text-xs text-slate-400">목록 관리</span>
           </div>
 
           <div id="scoreboards-container" class="space-y-2 flex-1 overflow-y-auto max-h-[250px] pr-1"></div>
 
           <div id="admin-controls" class="hidden mt-4 pt-4 border-t border-slate-700 space-y-3">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">관리자 점수 및 순서 설정</h3>
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">점수 및 순서 설정</h3>
             
             <div class="flex items-center gap-2 bg-slate-700/60 p-2 rounded-lg border border-slate-600">
               <span class="text-xs text-slate-300 whitespace-nowrap">문제 배점:</span>
@@ -164,7 +164,7 @@
     <div id="race-screen" class="hidden bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col h-[80vh] w-full relative">
       <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
         <div class="flex items-center gap-2">
-          <h2 class="text-xl font-bold text-yellow-400 drop-shadow-md">🌅 푯대를 향한 치열한 수직 질주!</h2>
+          <h2 class="text-xl font-bold text-yellow-400 drop-shadow-md">🌅 푯대를 향하여!</h2>
         </div>
         <button onclick="toggleRaceView(false)" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold transition shadow">부저 화면으로 돌아가기</button>
       </div>
@@ -255,7 +255,7 @@
         adminRoomList.innerHTML = '';
 
         if (roomKeys.length === 0) {
-          selectRoom.innerHTML = '<option value="">-- 개설된 방이 없습니다 (선생님께 문의) --</option>';
+          selectRoom.innerHTML = '<option value="">-- 개설된 방이 없습니다 (진행자께 문의) --</option>';
           adminRoomList.innerHTML = '<div class="text-slate-400 text-xs text-center py-4">개설된 방이 없습니다. 위에서 방을 만들어주세요.</div>';
           return;
         }
@@ -357,7 +357,7 @@
 
     function enterRoomAsAdmin(roomName) {
       currentRoom = roomName;
-      currentUser = { identifier: '선생님 (관리자)', isAdmin: true };
+      currentUser = { identifier: '진행자 모드', isAdmin: true };
       adminDashboard.classList.add('hidden');
       initGameSession();
     }
@@ -373,9 +373,9 @@
       adminDashboard.classList.add('hidden');
       gameScreen.classList.remove('hidden');
 
-      userDisplayInfo.innerText = `[방: ${currentRoom}] ${currentUser.identifier}`;
+      userDisplayInfo.innerText = `[${currentRoom}] ${currentUser.identifier}`;
       if (currentUser.isAdmin) {
-        roleBadge.innerText = '관리자(선생님)';
+        roleBadge.innerText = '진행자';
         roleBadge.className = 'px-3 py-1 bg-red-600 text-xs rounded-full font-bold';
         adminControls.classList.remove('hidden');
       } else {
@@ -443,7 +443,7 @@
           }
         } else {
           buzzerContainerBox.className = "md:col-span-2 bg-slate-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-700 relative min-h-[350px] transition-colors duration-300";
-          buzzerStatusText.innerText = "관리자의 시작 대기 중...";
+          buzzerStatusText.innerText = "진행자의 시작 대기 중...";
           winnerAnnouncement.classList.add('hidden');
           buzzerBtn.disabled = true;
           buzzerBtn.className = "w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-400 font-black text-2xl md:text-3xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
