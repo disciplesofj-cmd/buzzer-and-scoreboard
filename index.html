@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>교회 학교 멀티방 성경퀴즈 부저 & 수직 레이스</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    @keyframes pulse-gold {
+      0%, 100% { border-color: rgba(234, 179, 8, 0.8); box-shadow: 0 0 15px rgba(234, 179, 8, 0.4); }
+      50% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 0 5px rgba(234, 179, 8, 0.1); }
+    }
+    .rank-1-card { animation: pulse-gold 2s infinite; }
+    
+    @keyframes bounce-up {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .runner-avatar { animation: bounce-up 0.3s infinite alternate; }
+
+    /* 🌄 같은 폴더에 넣은 cross-bg.jpg를 레이스 배경으로 빈틈없이(Cover) 적용 */
+    .custom-race-bg {
+      background: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.5)), 
+                  url('cross-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between">
+
+  <!-- 전체 앱 컨테이너 -->
+  <div class="max-w-4xl w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+    
+    <!-- 1. 로그인 화면 -->
+    <div id="login-screen" class="bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-md mx-auto w-full text-center">
+      <h1 class="text-2xl font-bold mb-2 text-yellow-400">📖 멀티방 성경퀴즈 부저</h1>
+      <p class="text-slate-400 text-sm mb-6">입장할 방을 선택하고 정보를 입력하세요.</p>
+      
+      <div class="space-y-4 text-left">
+        <div>
+          <label class="block text-sm mb-1 text-slate-300">진행 중인 방 선택</label>
+          <select id="select-room" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white font-bold text-yellow-300">
+            <option value="">-- 관리자가 만든 방을 불러오는 중... --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-slate-300">소속 반 / 팀 이름</label>
+          <input type="text" id="input-group" placeholder="예: 중등 1반" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-slate-300">이름</label>
+          <input type="text" id="input-name" placeholder="예: 김요한" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
+        </div>
+        <button onclick="joinGame()" class="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg transition shadow-lg mt-2">
+          참여하기
+        </button>
+        <button onclick="toggleAdminLogin()" class="w-full py-2 bg-transparent hover:bg-slate-700 text-slate-400 text-xs rounded-lg transition mt-4">
+          관리자(선생님) 모드로 접속
+        </button>
+      </div>
+    </div>
+
+    <!-- 관리자 비밀번호 모달 -->
+    <div id="admin-login-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4">
+      <div class="bg-slate-800 p-6 rounded-xl max-w-xs w-full text-center">
+        <h3 class="font-bold mb-3 text-sm">관리자 비밀번호 입력</h3>
+        <input type="password" id="admin-pw" placeholder="비밀번호" class="w-full px-3 py-2 bg-slate-700 rounded text-center mb-3 text-sm">
+        <div class="flex gap-2">
+          <button onclick="verifyAdmin()" class="flex-1 bg-yellow-500 text-slate-950 py-2 rounded text-sm font-bold">확인</button>
+          <button onclick="toggleAdminLogin()" class="flex-1 bg-slate-600 py-2 rounded text-sm">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 관리자 대시보드 -->
+    <div id="admin-dashboard" class="hidden bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-lg mx-auto w-full">
+      <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+        <h2 class="text-xl font-bold text-yellow-400">🛠️ 관리자 방 대시보드</h2>
+        <button onclick="logout()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">로그아웃</button>
+      </div>
+
+      <div class="space-y-6">
+        <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600 space-y-3">
+          <h3 class="text-sm font-bold text-slate-200">새로운 퀴즈 방 만들기</h3>
+          <div class="flex gap-2">
+            <input type="text" id="new-room-code" placeholder="방 이름 (예: 중등부퀴즈)" class="flex-1 px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white">
+            <button onclick="createRoom()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-sm font-bold transition">방 생성</button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h3 class="text-sm font-bold text-slate-200">개설된 방 목록 (입장 또는 삭제)</h3>
+          <div id="admin-room-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 게임 메인 화면 -->
+    <div id="game-screen" class="hidden flex flex-col gap-6 w-full">
+      
+      <div class="flex flex-col md:flex-row justify-between items-center bg-slate-800 px-6 py-4 rounded-xl gap-4 border border-slate-700">
+        <div>
+          <span class="text-xs text-slate-400 block">접속 방 / 정보</span>
+          <span id="user-display-info" class="font-bold text-yellow-400 text-lg"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="role-badge" class="px-3 py-1 bg-blue-600 text-xs rounded-full font-bold">참가자</span>
+          <button onclick="toggleRaceView(true)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded-lg font-bold transition shadow">🚩 푯대를 향한 질주 (레이스)</button>
+          <button onclick="logout()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">나가기</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div id="buzzer-container-box" class="md:col-span-2 bg-slate-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-700 relative min-h-[350px] transition-colors duration-300">
+          
+          <div id="winner-announcement" class="mb-6 hidden w-full p-4 rounded-xl border-2 shadow-lg">
+            <span id="announcement-title" class="text-xs block uppercase font-bold tracking-wider">🚨 결과</span>
+            <span id="winner-text" class="text-2xl md:text-3xl font-black text-white mt-1 block"></span>
+          </div>
+
+          <div id="buzzer-status-text" class="text-slate-400 text-sm mb-4 font-medium">관리자의 시작 신호를 기다리세요...</div>
+
+          <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
+            class="w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-400 font-black text-2xl md:text-3xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
+            BUZZER
+          </button>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-base text-yellow-400 flex items-center gap-1">📊 실시간 참가자 점수판</h2>
+            <span class="text-xs text-slate-400">목록 관리 연동</span>
+          </div>
+
+          <div id="scoreboards-container" class="space-y-2 flex-1 overflow-y-auto max-h-[250px] pr-1"></div>
+
+          <div id="admin-controls" class="hidden mt-4 pt-4 border-t border-slate-700 space-y-3">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">관리자 점수 및 순서 설정</h3>
+            
+            <div class="flex items-center gap-2 bg-slate-700/60 p-2 rounded-lg border border-slate-600">
+              <span class="text-xs text-slate-300 whitespace-nowrap">문제 배점:</span>
+              <input type="number" id="custom-score-input" value="10" class="w-full bg-slate-800 px-2 py-1 rounded text-center text-yellow-400 font-bold text-sm focus:outline-none">
+              <span class="text-xs text-slate-400">점</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="resetBuzzer()" class="bg-blue-600 hover:bg-blue-500 py-2 rounded text-xs font-bold transition">부저 리셋</button>
+              <button onclick="openGroupModal()" class="bg-emerald-600 hover:bg-emerald-500 py-2 rounded text-xs font-bold transition">반/순서 관리</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 3. 전체 화면 수직 레이스 뷰 (cross-bg.jpg 배경 적용) -->
+    <div id="race-screen" class="hidden bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col h-[80vh] w-full relative">
+      <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xl font-bold text-yellow-400 drop-shadow-md">🌅 푯대를 향한 치열한 수직 질주!</h2>
+        </div>
+        <button onclick="toggleRaceView(false)" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold transition shadow">부저 화면으로 돌아가기</button>
+      </div>
+
+      <!-- 레이스 필드 (cross-bg.jpg 배경이 꽉 차게 적용됨) -->
+      <div class="flex-1 relative custom-race-bg rounded-xl border-2 border-yellow-500/40 overflow-hidden flex flex-col items-center shadow-2xl">
+        
+        <!-- 최하단: 출발선 -->
+        <div class="absolute bottom-3 z-10 bg-slate-900/90 px-4 py-1 rounded-lg border border-slate-600 text-xs font-bold text-slate-300 shadow-md">
+          🚩 출발선
+        </div>
+
+        <!-- 참가자 러너들이 배치될 필드 영역 -->
+        <div id="vertical-race-field" class="relative w-full h-full"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 반 추가/삭제 및 순서 관리 모달 -->
+  <div id="group-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-6 rounded-xl max-w-sm w-full space-y-4">
+      <h3 class="font-bold text-base text-yellow-400">반/팀 목록 및 순서 관리</h3>
+      <div class="space-y-2">
+        <input type="text" id="new-group-name" placeholder="추가할 반/팀 이름 (예: 모세팀)" class="w-full px-3 py-2 bg-slate-700 rounded text-sm border border-slate-600">
+        <button onclick="addGroup()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded text-xs font-bold">반 추가하기</button>
+      </div>
+      <div id="modal-group-list" class="space-y-2 max-h-40 overflow-y-auto pt-2 border-t border-slate-700 text-sm"></div>
+      <button onclick="closeGroupModal()" class="w-full bg-slate-600 py-2 rounded text-xs">닫기</button>
+    </div>
+  </div>
+
+  <footer class="text-center py-4 text-xs text-slate-500">
+    Youth Bible Quiz Buzzer System (Multi-Room)
+  </footer>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAf8kTopzYOd4cgGQJh2NSLAMxUksGjyXE",
+      authDomain: "project-6d866edc-15a1-4a39-acc.firebaseapp.com",
+      databaseURL: "https://project-6d866edc-15a1-4a39-acc-default-rtdb.firebaseio.com",
+      projectId: "project-6d866edc-15a1-4a39-acc",
+      storageBucket: "project-6d866edc-15a1-4a39-acc.firebasestorage.app",
+      messagingSenderId: "294924400638",
+      appId: "1:294924400638:web:340020aee979d19b46f2af",
+      measurementId: "G-KWZMQQQG18"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentRoom = '';
+    let currentUser = { identifier: '', isAdmin: false };
+    let groupsData = {}; 
+    let buzzerStatus = 'IDLE'; 
+
+    const avatarColors = [
+      "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", 
+      "bg-lime-500", "bg-green-500", "bg-emerald-500", "bg-teal-500", 
+      "bg-cyan-500", "bg-sky-500", "bg-blue-500", "bg-indigo-500", 
+      "bg-violet-500", "bg-purple-500", "bg-fuchsia-500", "bg-pink-500", "bg-rose-500"
+    ];
+
+    const loginScreen = document.getElementById('login-screen');
+    const adminDashboard = document.getElementById('admin-dashboard');
+    const gameScreen = document.getElementById('game-screen');
+    const raceScreen = document.getElementById('race-screen');
+    const selectRoom = document.getElementById('select-room');
+    const adminRoomList = document.getElementById('admin-room-list');
+    const buzzerBtn = document.getElementById('buzzer-btn');
+    const buzzerStatusText = document.getElementById('buzzer-status-text');
+    const winnerAnnouncement = document.getElementById('winner-announcement');
+    const announcementTitle = document.getElementById('announcement-title');
+    const winnerText = document.getElementById('winner-text');
+    const buzzerContainerBox = document.getElementById('buzzer-container-box');
+    const scoreboardsContainer = document.getElementById('scoreboards-container');
+    const verticalRaceField = document.getElementById('vertical-race-field');
+    const adminControls = document.getElementById('admin-controls');
+    const roleBadge = document.getElementById('role-badge');
+    const userDisplayInfo = document.getElementById('user-display-info');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      db.ref('rooms').on('value', (snapshot) => {
+        const rooms = snapshot.val() || {};
+        const roomKeys = Object.keys(rooms);
+
+        selectRoom.innerHTML = '<option value="">-- 진행 중인 방을 선택하세요 --</option>';
+        adminRoomList.innerHTML = '';
+
+        if (roomKeys.length === 0) {
+          selectRoom.innerHTML = '<option value="">-- 개설된 방이 없습니다 (선생님께 문의) --</option>';
+          adminRoomList.innerHTML = '<div class="text-slate-400 text-xs text-center py-4">개설된 방이 없습니다. 위에서 방을 만들어주세요.</div>';
+          return;
+        }
+
+        roomKeys.forEach(roomName => {
+          const opt = document.createElement('option');
+          opt.value = roomName;
+          opt.innerText = roomName;
+          selectRoom.appendChild(opt);
+
+          const item = document.createElement('div');
+          item.className = "flex justify-between items-center bg-slate-700 px-3 py-2 rounded text-sm";
+          item.innerHTML = `
+            <span class="font-bold text-yellow-300">📁 ${roomName}</span>
+            <div class="flex gap-2">
+              <button onclick="enterRoomAsAdmin('${roomName}')" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 rounded text-xs font-bold">관리 및 입장</button>
+              <button onclick="deleteRoom('${roomName}')" class="text-red-400 hover:text-red-300 text-xs font-bold">삭제</button>
+            </div>
+          `;
+          adminRoomList.appendChild(item);
+        });
+      });
+    });
+
+    function joinGame() {
+      const roomInput = selectRoom.value;
+      const groupInput = document.getElementById('input-group').value.trim();
+      const nameInput = document.getElementById('input-name').value.trim();
+
+      if (!roomInput) {
+        alert('입장할 방을 선택해주세요.');
+        return;
+      }
+      if (!groupInput && !nameInput) {
+        alert('반 이름이나 이름 중 최소 하나는 입력해주세요.');
+        return;
+      }
+
+      currentRoom = roomInput;
+      let identifier = '';
+      if (groupInput && nameInput) {
+        identifier = `${groupInput} / ${nameInput}`;
+      } else {
+        identifier = groupInput || nameInput;
+      }
+
+      currentUser = { identifier, isAdmin: false };
+      
+      db.ref(`rooms/${currentRoom}/groups/${identifier}`).once('value', (snapshot) => {
+        if (!snapshot.exists()) {
+          db.ref(`rooms/${currentRoom}/groups/${identifier}`).set({
+            score: 0,
+            order: Date.now()
+          });
+        }
+      });
+
+      initGameSession();
+    }
+
+    function toggleAdminLogin() {
+      document.getElementById('admin-login-modal').classList.toggle('hidden');
+    }
+
+    function verifyAdmin() {
+      const pw = document.getElementById('admin-pw').value;
+      if (pw === '1234') {
+        toggleAdminLogin();
+        loginScreen.classList.add('hidden');
+        adminDashboard.classList.remove('hidden');
+      } else {
+        alert('비밀번호가 틀렸습니다.');
+      }
+    }
+
+    function createRoom() {
+      const roomName = document.getElementById('new-room-code').value.trim();
+      if (!roomName) {
+        alert('방 이름을 입력해주세요.');
+        return;
+      }
+
+      db.ref(`rooms/${roomName}/buzzerState`).once('value', (snapshot) => {
+        if (snapshot.exists()) {
+          alert('이미 존재하는 방 이름입니다.');
+          return;
+        }
+        db.ref(`rooms/${roomName}/buzzerState`).set({
+          status: 'IDLE',
+          resultType: null,
+          winner: null,
+          firstPressTime: null,
+          pendingCheck: false
+        });
+        document.getElementById('new-room-code').value = '';
+        alert(`'${roomName}' 방이 생성되었습니다!`);
+      });
+    }
+
+    function enterRoomAsAdmin(roomName) {
+      currentRoom = roomName;
+      currentUser = { identifier: '선생님 (관리자)', isAdmin: true };
+      adminDashboard.classList.add('hidden');
+      initGameSession();
+    }
+
+    function deleteRoom(roomName) {
+      if (confirm(`정말 '${roomName}' 방과 관련된 모든 데이터를 삭제하시겠습니까?`)) {
+        db.ref(`rooms/${roomName}`).remove();
+      }
+    }
+
+    function initGameSession() {
+      loginScreen.classList.add('hidden');
+      adminDashboard.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+
+      userDisplayInfo.innerText = `[방: ${currentRoom}] ${currentUser.identifier}`;
+      if (currentUser.isAdmin) {
+        roleBadge.innerText = '관리자(선생님)';
+        roleBadge.className = 'px-3 py-1 bg-red-600 text-xs rounded-full font-bold';
+        adminControls.classList.remove('hidden');
+      } else {
+        roleBadge.innerText = '참가자';
+        roleBadge.className = 'px-3 py-1 bg-blue-600 text-xs rounded-full font-bold';
+        adminControls.classList.add('hidden');
+      }
+
+      setupRealtimeListeners();
+    }
+
+    function toggleRaceView(showRace) {
+      if (showRace) {
+        gameScreen.classList.add('hidden');
+        raceScreen.classList.remove('hidden');
+        renderVerticalRace();
+      } else {
+        raceScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      location.reload();
+    }
+
+    function setupRealtimeListeners() {
+      db.ref(`rooms/${currentRoom}/buzzerState`).on('value', (snapshot) => {
+        const state = snapshot.val();
+        if (!state) return;
+
+        buzzerStatus = state.status; 
+        const resultType = state.resultType; 
+        const winner = state.winner;
+
+        if (buzzerStatus === 'ACTIVE') {
+          buzzerContainerBox.className = "md:col-span-2 bg-slate-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-700 relative min-h-[350px] transition-colors duration-300";
+          buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
+          winnerAnnouncement.classList.add('hidden');
+          
+          if (!currentUser.isAdmin) {
+            buzzerBtn.disabled = false;
+            buzzerBtn.className = "w-48 h-48 md:w-60 md:h-60 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-2xl md:text-3xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
+          } else {
+            buzzerBtn.disabled = true;
+            buzzerBtn.className = "w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-400 font-black text-2xl md:text-3xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+          }
+        } else if (buzzerStatus === 'LOCKED') {
+          buzzerBtn.disabled = true;
+          buzzerBtn.className = "w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-500 font-black text-2xl md:text-3xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+          buzzerStatusText.innerText = "✨ 결과 판정 완료!";
+
+          if (resultType === 'WINNER' && winner) {
+            buzzerContainerBox.className = "md:col-span-2 bg-emerald-950/80 p-6 rounded-2xl flex flex-col items-center justify-center text-center border-2 border-emerald-500 relative min-h-[350px] transition-colors duration-300";
+            announcementTitle.className = "text-xs block uppercase font-bold tracking-wider text-emerald-300";
+            announcementTitle.innerText = "🏆 1등 적중!";
+            winnerText.innerText = `${winner} 님!`;
+            winnerAnnouncement.className = "mb-6 block w-full bg-emerald-900/50 border-2 border-emerald-500 p-4 rounded-xl shadow-lg";
+          } else if (resultType === 'TIE') {
+            buzzerContainerBox.className = "md:col-span-2 bg-red-950/80 p-6 rounded-2xl flex flex-col items-center justify-center text-center border-2 border-red-500 relative min-h-[350px] transition-colors duration-300";
+            announcementTitle.className = "text-xs block uppercase font-bold tracking-wider text-red-300";
+            announcementTitle.innerText = "⚡ 동시타 발생!";
+            winnerText.innerText = "❌ 동점 (구분 불가) - 다시 누르세요!";
+            winnerAnnouncement.className = "mb-6 block w-full bg-red-900/50 border-2 border-red-500 p-4 rounded-xl shadow-lg animate-pulse";
+          }
+        } else {
+          buzzerContainerBox.className = "md:col-span-2 bg-slate-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-700 relative min-h-[350px] transition-colors duration-300";
+          buzzerStatusText.innerText = "관리자의 시작 대기 중...";
+          winnerAnnouncement.classList.add('hidden');
+          buzzerBtn.disabled = true;
+          buzzerBtn.className = "w-48 h-48 md:w-60 md:h-60 rounded-full bg-slate-700 text-slate-400 font-black text-2xl md:text-3xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+        }
+      });
+
+      db.ref(`rooms/${currentRoom}/groups`).on('value', (snapshot) => {
+        const rawData = snapshot.val() || {};
+        groupsData = {};
+        
+        for (let [key, val] of Object.entries(rawData)) {
+          if (typeof val === 'number') {
+            groupsData[key] = { score: val, order: 0 };
+          } else {
+            groupsData[key] = { score: val.score || 0, order: val.order || 0 };
+          }
+        }
+        renderScoreboards();
+        if (!raceScreen.classList.contains('hidden')) {
+          renderVerticalRace();
+        }
+      });
+    }
+
+    function pressBuzzer() {
+      if (buzzerStatus !== 'ACTIVE') return;
+
+      const buzzerRef = db.ref(`rooms/${currentRoom}/buzzerState`);
+      
+      buzzerRef.transaction((current) => {
+        if (current && current.status === 'ACTIVE') {
+          const now = Date.now();
+          
+          if (!current.firstPressTime) {
+            current.firstPressTime = now;
+            current.winner = currentUser.identifier;
+            current.pendingCheck = true;
+            return current;
+          } else {
+            if (now - current.firstPressTime <= 80) {
+              current.status = 'LOCKED';
+              current.resultType = 'TIE';
+              current.winner = null;
+              return current;
+            }
+          }
+        }
+        return;
+      }, (error, committed, snapshot) => {
+        if (committed && buzzerStatus === 'ACTIVE') {
+          setTimeout(() => {
+            buzzerRef.once('value', (snap) => {
+              const val = snap.val();
+              if (val && val.status === 'ACTIVE' && val.pendingCheck) {
+                val.status = 'LOCKED';
+                val.resultType = 'WINNER';
+                buzzerRef.set(val);
+              }
+            });
+          }, 80);
+        }
+      });
+    }
+
+    function renderScoreboards() {
+      scoreboardsContainer.innerHTML = '';
+      const modalGroupList = document.getElementById('modal-group-list');
+      if(modalGroupList) modalGroupList.innerHTML = '';
+
+      const entries = Object.entries(groupsData);
+
+      if (entries.length === 0) {
+        scoreboardsContainer.innerHTML = '<div class="text-slate-500 text-xs text-center py-4">등록된 반이나 팀이 없습니다.</div>';
+        return;
+      }
+
+      entries.sort((a, b) => a[1].order - b[1].order);
+
+      entries.forEach(([groupName, data], index) => {
+        const card = document.createElement('div');
+        card.className = "flex justify-between items-center px-4 py-3 rounded-xl border bg-slate-700/50 border-slate-600";
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 text-center font-bold text-slate-400 text-xs">${index + 1}</span>
+            <span class="font-bold text-sm text-slate-200">${groupName}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="font-black text-yellow-400 text-base">${data.score}점</span>
+            ${currentUser.isAdmin ? `
+              <div class="flex gap-1">
+                <button onclick="updateScoreByInput('${groupName}', true)" class="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-xs font-bold">+점수</button>
+                <button onclick="updateScoreByInput('${groupName}', false)" class="bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-xs font-bold">-점수</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        scoreboardsContainer.appendChild(card);
+
+        if (currentUser.isAdmin && modalGroupList) {
+          const item = document.createElement('div');
+          item.className = "flex justify-between items-center bg-slate-700 px-3 py-2 rounded text-xs";
+          item.innerHTML = `
+            <span class="font-bold truncate max-w-[120px]">${groupName}</span>
+            <div class="flex items-center gap-1">
+              <button onclick="moveOrder('${groupName}', 'up')" class="bg-slate-600 hover:bg-slate-500 px-1.5 py-1 rounded font-bold">▲</button>
+              <button onclick="moveOrder('${groupName}', 'down')" class="bg-slate-600 hover:bg-slate-500 px-1.5 py-1 rounded font-bold">▼</button>
+              <button onclick="deleteGroup('${groupName}')" class="text-red-400 hover:text-red-300 font-bold ml-1">삭제</button>
+            </div>
+          `;
+          modalGroupList.appendChild(item);
+        }
+      });
+    }
+
+    function renderVerticalRace() {
+      verticalRaceField.innerHTML = '';
+      const entries = Object.entries(groupsData);
+
+      if (entries.length === 0) {
+        verticalRaceField.innerHTML = '<div class="text-slate-200 text-center py-20 font-bold bg-black/40 rounded-xl">참가 팀이 없습니다.</div>';
+        return;
+      }
+
+      let maxScore = 10;
+      entries.forEach(([_, data]) => {
+        if (data.score > maxScore) maxScore = data.score;
+      });
+
+      const totalTeams = entries.length;
+
+      entries.forEach(([groupName, data], index) => {
+        let percent = Math.max(8, Math.min(85, (data.score / maxScore) * 78));
+        if (data.score <= 0) percent = 8;
+
+        let horizontalPercent = totalTeams === 1 ? 50 : 8 + (index * (84 / (totalTeams - 1)));
+        const colorClass = avatarColors[index % avatarColors.length];
+
+        const runnerNode = document.createElement('div');
+        runnerNode.className = "absolute transition-all duration-700 ease-out flex flex-col items-center -translate-x-1/2";
+        runnerNode.style.bottom = `${percent}%`;
+        runnerNode.style.left = `${horizontalPercent}%`;
+
+        runnerNode.innerHTML = `
+          <span class="text-[10px] bg-slate-900/90 text-white px-1.5 py-0.5 rounded border border-slate-700 font-bold shadow whitespace-nowrap mb-1">${groupName}</span>
+          <div class="w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-lg border-2 border-white/80 runner-avatar">
+            <span class="text-sm">🏃‍♂️</span>
+          </div>
+        `;
+        verticalRaceField.appendChild(runnerNode);
+      });
+    }
+
+    function updateScoreByInput(groupName, isAdd) {
+      const inputVal = parseInt(document.getElementById('custom-score-input').value) || 0;
+      const amount = isAdd ? inputVal : -inputVal;
+      const currentScore = groupsData[groupName] ? groupsData[groupName].score : 0;
+      const currentOrder = groupsData[groupName] ? groupsData[groupName].order : 0;
+      
+      db.ref(`rooms/${currentRoom}/groups/${groupName}`).set({
+        score: currentScore + amount,
+        order: currentOrder
+      });
+    }
+
+    function moveOrder(targetName, direction) {
+      const entries = Object.entries(groupsData);
+      entries.sort((a, b) => a[1].order - b[1].order);
+
+      const index = entries.findIndex(([name]) => name === targetName);
+      if (index === -1) return;
+
+      if (direction === 'up' && index > 0) {
+        const temp = entries[index][1].order;
+        entries[index][1].order = entries[index - 1][1].order;
+        entries[index - 1][1].order = temp;
+      } else if (direction === 'down' && index < entries.length - 1) {
+        const temp = entries[index][1].order;
+        entries[index][1].order = entries[index + 1][1].order;
+        entries[index + 1][1].order = temp;
+      }
+
+      let updates = {};
+      entries.forEach(([name, val]) => {
+        updates[name] = val;
+      });
+      db.ref(`rooms/${currentRoom}/groups`).set(updates);
+    }
+
+    function resetBuzzer() {
+      db.ref(`rooms/${currentRoom}/buzzerState`).set({
+        status: 'ACTIVE',
+        resultType: null,
+        winner: null,
+        firstPressTime: null,
+        pendingCheck: false
+      });
+    }
+
+    function openGroupModal() {
+      document.getElementById('group-modal').classList.remove('hidden');
+    }
+    function closeGroupModal() {
+      document.getElementById('group-modal').classList.add('hidden');
+    }
+
+    function addGroup() {
+      const name = document.getElementById('new-group-name').value.trim();
+      if (!name) return;
+      db.ref(`rooms/${currentRoom}/groups/${name}`).set({
+        score: 0,
+        order: Date.now()
+      });
+      document.getElementById('new-group-name').value = '';
+    }
+
+    function deleteGroup(name) {
+      if (confirm(`정말 '${name}' 항목을 삭제하시겠습니까?`)) {
+        db.ref(`rooms/${currentRoom}/groups/${name}`).remove();
+      }
+    }
+  </script>
+</body>
+</html>
