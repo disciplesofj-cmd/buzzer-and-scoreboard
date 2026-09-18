@@ -541,12 +541,12 @@
         } else if (buzzerStatus === 'LOCKED') {
           buzzerBtn.disabled = true;
           buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-500 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
-          buzzerStatusText.innerText = "✨ 3초 안에!";
+          buzzerStatusText.innerText = "✨ 제한시간 안에!";
 
           if (state.resultType === 'WINNER' && state.winnerName) {
             buzzerContainerBox.className = "bg-emerald-950/80 p-8 rounded-2xl flex flex-col items-center justify-center text-center border-2 border-emerald-500 relative w-full max-w-2xl min-h-[400px] transition-colors duration-300 shadow-2xl";
             announcementTitle.className = "text-xs block uppercase font-bold tracking-wider text-emerald-300";
-            announcementTitle.innerText = "🏆 성경 구절을 읽어 주세요!";
+            announcementTitle.innerText = "🏆 정답을 말해주세요!";
             winnerText.innerText = `${state.winnerName} 님!`;
             winnerTeamText.innerText = (state.winnerTeam && state.winnerTeam !== '개인전(팀없음)' && state.winnerTeam !== state.winnerName) ? `소속: ${state.winnerTeam}` : '';
             winnerAnnouncement.className = "mb-6 block w-full bg-emerald-900/50 border-2 border-emerald-500 p-4 rounded-xl shadow-lg";
