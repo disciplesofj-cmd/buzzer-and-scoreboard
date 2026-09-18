@@ -44,6 +44,13 @@
     
     .tab-active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
     .tab-inactive { background-color: transparent; color: #94a3b8; border-color: #475569; }
+
+/* 원형 카운트다운 안의 글씨 크기 자동 조절 대응 */
+    #countdown-box {
+      font-variant-numeric: tabular-nums;
+      transition: all 0.2s ease-in-out;
+    }
+
   </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between select-none">
@@ -118,12 +125,6 @@
     <!-- 2. 게임 메인 화면 (부저 전용 풀스크린) -->
     <div id="game-screen" class="hidden flex flex-col gap-6 w-full">
 
-<!-- ⏱️ 실시간 카운트다운 디스플레이 (전체 화면 최상단 강조) -->
-    <div id="countdown-display" class="hidden fixed inset-x-0 top-4 flex justify-center z-50 pointer-events-none">
-      <div id="countdown-box" class="bg-red-600/90 text-white font-black text-6xl md:text-8xl px-10 py-4 rounded-3xl shadow-2xl border-4 border-yellow-400 animate-pulse">
-        5
-      </div>
-    </div>
       
       <!-- 상단 정보바 (부저 박스와 동일한 max-w-2xl 너비 적용) -->
       <div class="w-full max-w-2xl mx-auto flex flex-col md:flex-row justify-between items-center bg-slate-800 px-6 py-4 rounded-xl gap-4 border border-slate-700 shadow-xl">
@@ -151,10 +152,23 @@
 
           <div id="buzzer-status-text" class="text-slate-400 text-sm mb-6 font-medium">관리자의 시작 신호를 기다리세요...</div>
 
+<!-- 💡 부저 버튼과 카운트다운 동그라미가 정확히 일치하도록 감싸주는 기준 박스 -->
+          <div class="relative flex items-center justify-center">
+
           <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
             class="w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
             BUZZER
           </button>
+
+<!-- ⏱️ 부저 버튼과 크기/위치가 100% 일치하는 정중앙 원형 카운트다운 디스플레이 -->
+            <div id="countdown-display" class="hidden absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+              <div id="countdown-box" class="w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 text-white font-black text-6xl md:text-8xl flex items-center justify-center shadow-2xl border-8 border-yellow-400 animate-pulse text-center leading-none">
+                5
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
