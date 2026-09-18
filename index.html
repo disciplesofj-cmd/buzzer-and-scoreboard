@@ -45,12 +45,11 @@
     .tab-active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
     .tab-inactive { background-color: transparent; color: #94a3b8; border-color: #475569; }
 
-/* 원형 카운트다운 안의 글씨 크기 자동 조절 대응 */
+    /* 원형 카운트다운 안의 글씨 크기 자동 조절 대응 */
     #countdown-box {
       font-variant-numeric: tabular-nums;
       transition: all 0.2s ease-in-out;
     }
-
   </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between select-none">
@@ -124,7 +123,6 @@
 
     <!-- 2. 게임 메인 화면 (부저 전용 풀스크린) -->
     <div id="game-screen" class="hidden flex flex-col gap-6 w-full">
-
       
       <!-- 상단 정보바 (부저 박스와 동일한 max-w-2xl 너비 적용) -->
       <div class="w-full max-w-2xl mx-auto flex flex-col md:flex-row justify-between items-center bg-slate-800 px-6 py-4 rounded-xl gap-4 border border-slate-700 shadow-xl">
@@ -152,15 +150,16 @@
 
           <div id="buzzer-status-text" class="text-slate-400 text-sm mb-6 font-medium">진행자의 시작 신호를 기다리세요...</div>
 
-<!-- 💡 부저 버튼과 카운트다운 동그라미가 정확히 일치하도록 감싸주는 기준 박스 -->
+          <!-- 💡 부저 버튼과 카운트다운 동그라미가 정확히 일치하도록 감싸주는 기준 박스 -->
           <div class="relative flex items-center justify-center">
 
-          <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
-            class="w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
-            BUZZER
-          </button>
+            <!-- 부저 버튼 (z-index 추가하여 클릭 방해 차단) -->
+            <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
+              class="relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
+              BUZZER
+            </button>
 
-<!-- ⏱️ 부저 버튼과 크기/위치가 100% 일치하는 정중앙 원형 카운트다운 디스플레이 -->
+            <!-- ⏱️ 부저 버튼과 크기/위치가 100% 일치하는 정중앙 원형 카운트다운 디스플레이 -->
             <div id="countdown-display" class="hidden absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
               <div id="countdown-box" class="w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 text-white font-black text-6xl md:text-8xl flex items-center justify-center shadow-2xl border-8 border-yellow-400 animate-pulse text-center leading-none">
                 5
@@ -187,7 +186,6 @@
           
           <!-- 첫 번째 줄: 문제 배점 박스 + 타이머 박스 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- 문제 배점 -->
             <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
               <span class="text-xs text-slate-300 whitespace-nowrap font-medium">문제 배점:</span>
               <div class="flex items-center gap-1.5">
@@ -196,7 +194,6 @@
               </div>
             </div>
 
-            <!-- 타이머 -->
             <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
               <span class="text-xs font-bold text-slate-300 whitespace-nowrap">⏱️ 타이머:</span>
               <div class="flex items-center gap-1.5">
@@ -212,25 +209,22 @@
 
           <!-- 두 번째 줄: 레이스 기준 박스 + 부저 리셋 & 팀/개인 데이터 관리 버튼 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <!-- 레이스 기준 -->
             <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
-              <span class="text-xs text-slate-300 whitespace-nowrap font-medium">레이스 기준:</span>
+              <span class="text-xs text-slate-300 whitespace-nowrap font-medium">점수 기준:</span>
               <div class="flex items-center gap-1.5">
                 <input type="number" id="race-max-score-input" value="100" class="w-16 bg-slate-800 px-2 py-1 rounded text-center text-yellow-400 font-bold text-sm focus:outline-none border border-slate-600">
                 <span class="text-xs text-slate-400">점</span>
               </div>
             </div>
 
-            <!-- 부저 리셋 & 팀/개인 데이터 관리 버튼 -->
             <div class="flex gap-2">
               <button onclick="resetBuzzer()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl text-xs font-bold transition text-white shadow">부저 리셋</button>
-              <button onclick="openGroupModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 px-2 rounded-xl text-xs font-bold transition text-white shadow whitespace-nowrap">데이터 관리</button>
+              <button onclick="openGroupModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 px-2 rounded-xl text-xs font-bold transition text-white shadow whitespace-nowrap">명단 관리</button>
             </div>
           </div>
 
         </div>
       </div>
-
     </div>
 
     <!-- 3. 전체 화면 수직 레이스 뷰 -->
@@ -242,8 +236,8 @@
         <div class="flex gap-2 w-full md:w-auto justify-between">
           <!-- 팀/개인 레이스 전환 탭 -->
           <div class="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
-            <button id="race-tab-team" onclick="setRaceViewMode('team')" class="px-3 py-1 text-xs font-bold rounded tab-active transition">팀 레이스</button>
-            <button id="race-tab-player" onclick="setRaceViewMode('player')" class="px-3 py-1 text-xs font-bold rounded tab-inactive transition">개인 레이스</button>
+            <button id="race-tab-team" onclick="setRaceViewMode('team')" class="px-3 py-1 text-xs font-bold rounded tab-active transition">팀 순위</button>
+            <button id="race-tab-player" onclick="setRaceViewMode('player')" class="px-3 py-1 text-xs font-bold rounded tab-inactive transition">개인 순위</button>
           </div>
           <button onclick="toggleRaceView(false)" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold transition shadow whitespace-nowrap">부저로 복귀</button>
         </div>
@@ -251,7 +245,7 @@
 
       <div class="flex-1 relative custom-race-bg rounded-xl border-2 border-yellow-500/40 overflow-hidden flex flex-col items-center shadow-2xl">
         <div class="absolute bottom-3 z-10 bg-slate-900/90 px-4 py-1 rounded-lg border border-slate-600 text-xs font-bold text-slate-300 shadow-md">
-          🚩 ----------------------------------------------------------------------- 출발선 ----------------------------------------------------------------------
+          🚩 --------------------------------------------- 출발선 ---------------------------------------------
         </div>
         <div id="race-goal-label" class="absolute top-3 z-10 bg-slate-900/90 px-4 py-1 rounded-lg border border-yellow-500/50 text-xs font-bold text-yellow-400 shadow-md">
           🎯 푯대
@@ -508,7 +502,7 @@
       setupRealtimeListeners();
     }
 
-    // 💡 [교체] 점수판 모달 토글 함수 (관리자 조작 시 Firebase 동기화)
+    // 💡 관리자가 점수판 토글 시 Firebase에 동기화
     function toggleScoreboardModal(show) {
       if (currentUser.isAdmin) {
         db.ref(`rooms/${currentRoom}/uiState/scoreboardOpen`).set(show);
@@ -518,7 +512,7 @@
       }
     }
 
-    // 💡 [교체] 질주 레이스 뷰 토글 함수 (관리자 조작 시 Firebase 동기화)
+    // 💡 관리자가 레이스 뷰 토글 시 Firebase에 동기화
     function toggleRaceView(showRace) {
       if (currentUser.isAdmin) {
         db.ref(`rooms/${currentRoom}/uiState/raceOpen`).set(showRace);
@@ -550,14 +544,15 @@
           
           if (!currentUser.isAdmin) {
             buzzerBtn.disabled = false;
-            buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
+            // 💡 z-index 강화
+            buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
           } else {
             buzzerBtn.disabled = true;
-            buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+            buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
           }
         } else if (buzzerStatus === 'LOCKED') {
           buzzerBtn.disabled = true;
-          buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-500 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+          buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-500 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
           buzzerStatusText.innerText = "✨ 제한시간 안에!";
 
           if (state.resultType === 'WINNER' && state.winnerName) {
@@ -580,22 +575,20 @@
           buzzerStatusText.innerText = "진행자의 시작 대기 중...";
           winnerAnnouncement.classList.add('hidden');
           buzzerBtn.disabled = true;
-          buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+          buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
         }
       });
 
-      // 2. 💡 [추가된 위치] 관리자가 점수판이나 레이스를 켤 때 참가자 화면에 실시간 동기화하는 UI 리스너
+      // 2. 💡 관리자가 점수판이나 레이스를 켤 때 참가자 화면에 실시간 동기화
       db.ref(`rooms/${currentRoom}/uiState`).on('value', (snapshot) => {
         const ui = snapshot.val() || {};
         
-        // 점수판 모달 동기화
         if (ui.scoreboardOpen) {
           scoreboardModal.classList.remove('hidden');
         } else {
           scoreboardModal.classList.add('hidden');
         }
 
-        // 레이스 화면 동기화
         if (ui.raceOpen) {
           gameScreen.classList.add('hidden');
           raceScreen.classList.remove('hidden');
@@ -658,6 +651,43 @@
             }, 1000);
           }
         }, 1000);
+      });
+    }
+
+    function pressBuzzer() {
+      if (buzzerStatus !== 'ACTIVE') return;
+      const buzzerRef = db.ref(`rooms/${currentRoom}/buzzerState`);
+      buzzerRef.transaction((current) => {
+        if (current && current.status === 'ACTIVE') {
+          const now = Date.now();
+          if (!current.firstPressTime) {
+            current.firstPressTime = now;
+            current.winnerName = currentUser.displayName;
+            current.winnerTeam = currentUser.teamName;
+            current.pendingCheck = true;
+            return current;
+          } else {
+            if (now - current.firstPressTime <= 80) {
+              current.status = 'LOCKED';
+              current.resultType = 'TIE';
+              return current;
+            }
+          }
+        }
+        return;
+      }, (error, committed) => {
+        if (committed && buzzerStatus === 'ACTIVE') {
+          setTimeout(() => {
+            buzzerRef.once('value', (snap) => {
+              const val = snap.val();
+              if (val && val.status === 'ACTIVE' && val.pendingCheck) {
+                val.status = 'LOCKED';
+                val.resultType = 'WINNER';
+                buzzerRef.set(val);
+              }
+            });
+          }, 80);
+        }
       });
     }
 
@@ -735,16 +765,13 @@
       });
     }
 
-    // 💡 변경점: 관리자가 지정한 기준 점수(만점)를 반영하여 레이스 위치 고정 계산
     function renderVerticalRace() {
       verticalRaceField.innerHTML = '';
       const targetData = raceViewMode === 'team' ? teamsData : playersData;
       const entries = Object.entries(targetData);
 
-      // 관리자가 입력한 기준 점수(만점) 가져오기 (기본값 100)
       const maxScoreInput = parseInt(document.getElementById('race-max-score-input').value) || 100;
       
-      // 레이스 화면의 라벨 문구 실시간 업데이트
       document.getElementById('race-title-label').innerText = `🌅 실시간 순위 (기준: ${maxScoreInput}점)`;
       document.getElementById('race-goal-label').innerText = `🎯 푯대 (${maxScoreInput}점)`;
 
@@ -757,7 +784,6 @@
 
       entries.forEach(([name, data], index) => {
         let currentScore = data.score || 0;
-        // 지정된 만점 기준 점수를 백분율(0%~100%)로 환산하여 위치 고정 (최대 85% 지점)
         let percent = 8 + Math.min(77, (currentScore / maxScoreInput) * 77);
         if (currentScore <= 0) percent = 8;
 
@@ -887,13 +913,12 @@
       });
     }
 
-// ⏱️ 관리자 타이머 시작 함수 (Firebase에 카운트다운 상태 전송)
     function startTimerAdmin() {
       const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
       db.ref(`rooms/${currentRoom}/timerState`).set({
         duration: sec,
         startTime: Date.now(),
-        actionId: Math.random() // 동일한 초를 다시 눌러도 리스너가 반응하도록 고유값 부여
+        actionId: Math.random()
       });
     }
 
