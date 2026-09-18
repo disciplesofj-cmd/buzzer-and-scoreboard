@@ -22,10 +22,10 @@
     }
     .runner-avatar { animation: bounce-up 0.3s infinite alternate; }
 
-    /* cross-bg.png 배경 적용 */
+    /* cross-bg.jpg 배경 적용 */
     .custom-race-bg {
       background: linear-gradient(to bottom, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.4)), 
-                  url('cross-bg.png');
+                  url('cross-bg.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -42,7 +42,6 @@
       cursor: move;
     }
     
-    /* 탭 활성화 디자인 */
     .tab-active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
     .tab-inactive { background-color: transparent; color: #94a3b8; border-color: #475569; }
   </style>
@@ -81,7 +80,7 @@
       </div>
     </div>
 
-    <!-- 진행자 비밀번호 모달 -->
+    <!-- 관리자 비밀번호 모달 -->
     <div id="admin-login-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div class="bg-slate-800 p-6 rounded-xl max-w-xs w-full text-center">
         <h3 class="font-bold mb-3 text-sm">진행자 비밀번호</h3>
@@ -93,7 +92,7 @@
       </div>
     </div>
 
-    <!-- 진행자 대시보드 -->
+    <!-- 관리자 대시보드 -->
     <div id="admin-dashboard" class="hidden bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-lg mx-auto w-full">
       <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
         <h2 class="text-xl font-bold text-yellow-400">🛠️ 진행자 방 대시보드</h2>
@@ -118,9 +117,16 @@
 
     <!-- 2. 게임 메인 화면 (부저 전용 풀스크린) -->
     <div id="game-screen" class="hidden flex flex-col gap-6 w-full">
+
+<!-- ⏱️ 실시간 카운트다운 디스플레이 (전체 화면 최상단 강조) -->
+    <div id="countdown-display" class="hidden fixed inset-x-0 top-4 flex justify-center z-50 pointer-events-none">
+      <div id="countdown-box" class="bg-red-600/90 text-white font-black text-6xl md:text-8xl px-10 py-4 rounded-3xl shadow-2xl border-4 border-yellow-400 animate-pulse">
+        5
+      </div>
+    </div>
       
-      <!-- 상단 정보바 -->
-      <div class="flex flex-col md:flex-row justify-between items-center bg-slate-800 px-6 py-4 rounded-xl gap-4 border border-slate-700">
+      <!-- 상단 정보바 (부저 박스와 동일한 max-w-2xl 너비 적용) -->
+      <div class="w-full max-w-2xl mx-auto flex flex-col md:flex-row justify-between items-center bg-slate-800 px-6 py-4 rounded-xl gap-4 border border-slate-700 shadow-xl">
         <div>
           <span class="text-xs text-slate-400 block">접속 방 / 정보</span>
           <span id="user-display-info" class="font-bold text-yellow-400 text-lg"></span>
@@ -143,7 +149,7 @@
             <span id="winner-team-text" class="text-sm text-yellow-300 mt-1 block"></span>
           </div>
 
-          <div id="buzzer-status-text" class="text-slate-400 text-sm mb-6 font-medium">진행자의 시작 신호를 기다리세요...</div>
+          <div id="buzzer-status-text" class="text-slate-400 text-sm mb-6 font-medium">관리자의 시작 신호를 기다리세요...</div>
 
           <button id="buzzer-btn" onclick="pressBuzzer()" disabled 
             class="w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-slate-600 cursor-not-allowed">
@@ -152,19 +158,62 @@
         </div>
       </div>
 
-      <!-- 진행자 전용 제어 바 -->
-      <div id="admin-controls" class="hidden bg-slate-800 px-6 py-4 rounded-xl border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🛠️ 진행자 제어 패널</h3>
+     <!-- 관리자 전용 제어 바 (부저 박스와 동일한 max-w-2xl 너비 및 균형 배치) -->
+      <div id="admin-controls" class="hidden w-full max-w-2xl mx-auto bg-slate-800 p-5 rounded-2xl border border-slate-700 flex items-center gap-4 shadow-2xl">
         
-        <div class="flex items-center gap-2 bg-slate-700/60 px-3 py-1.5 rounded-lg border border-slate-600">
-          <span class="text-xs text-slate-300 whitespace-nowrap">배점:</span>
-          <input type="number" id="custom-score-input" value="10" class="w-16 bg-slate-800 px-2 py-1 rounded text-center text-yellow-400 font-bold text-sm focus:outline-none">
-          <span class="text-xs text-slate-400">점</span>
+        <!-- 왼쪽에 세로쓰기로 배치된 관리자 패널 제목 -->
+        <div class="bg-slate-700/80 px-2.5 py-6 rounded-xl border border-slate-600 flex items-center justify-center shrink-0 shadow-inner">
+          <span class="text-xs font-black text-yellow-400 tracking-widest leading-tight text-center" style="writing-mode: vertical-rl; text-orientation: upright;">
+            관리자제어판
+          </span>
         </div>
 
-        <div class="flex gap-2 w-full md:w-auto">
-          <button onclick="resetBuzzer()" class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-xs font-bold transition">부저 리셋</button>
-          <button onclick="openGroupModal()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-xs font-bold transition">팀/개인 데이터 관리</button>
+        <!-- 우측 메인 컨트롤 영역 (좌우 위아래 균형 잡힌 2단 배치) -->
+        <div class="flex-1 flex flex-col gap-3">
+          
+          <!-- 첫 번째 줄: 문제 배점 박스 + 타이머 박스 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- 문제 배점 -->
+            <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
+              <span class="text-xs text-slate-300 whitespace-nowrap font-medium">문제 배점:</span>
+              <div class="flex items-center gap-1.5">
+                <input type="number" id="custom-score-input" value="10" class="w-16 bg-slate-800 px-2 py-1 rounded text-center text-yellow-400 font-bold text-sm focus:outline-none border border-slate-600">
+                <span class="text-xs text-slate-400">점</span>
+              </div>
+            </div>
+
+            <!-- 타이머 -->
+            <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
+              <span class="text-xs font-bold text-slate-300 whitespace-nowrap">⏱️ 타이머:</span>
+              <div class="flex items-center gap-1.5">
+                <select id="timer-sec-input" class="bg-slate-800 px-2 py-1 rounded text-yellow-400 font-bold text-xs focus:outline-none border border-slate-600">
+                  <option value="5">5초</option>
+                  <option value="3">3초</option>
+                  <option value="10">10초</option>
+                </select>
+                <button onclick="startTimerAdmin()" class="bg-amber-600 hover:bg-amber-500 px-2.5 py-1 rounded text-xs font-bold transition text-white shadow">시작</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 두 번째 줄: 레이스 기준 박스 + 부저 리셋 & 팀/개인 데이터 관리 버튼 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <!-- 레이스 기준 -->
+            <div class="flex items-center justify-between bg-slate-700/60 px-3.5 py-2 rounded-xl border border-slate-600">
+              <span class="text-xs text-slate-300 whitespace-nowrap font-medium">레이스 기준:</span>
+              <div class="flex items-center gap-1.5">
+                <input type="number" id="race-max-score-input" value="100" class="w-16 bg-slate-800 px-2 py-1 rounded text-center text-yellow-400 font-bold text-sm focus:outline-none border border-slate-600">
+                <span class="text-xs text-slate-400">점</span>
+              </div>
+            </div>
+
+            <!-- 부저 리셋 & 팀/개인 데이터 관리 버튼 -->
+            <div class="flex gap-2">
+              <button onclick="resetBuzzer()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl text-xs font-bold transition text-white shadow">부저 리셋</button>
+              <button onclick="openGroupModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 px-2 rounded-xl text-xs font-bold transition text-white shadow whitespace-nowrap">데이터 관리</button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -174,7 +223,7 @@
     <div id="race-screen" class="hidden bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col h-[80vh] w-full relative">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b border-slate-700 pb-3 gap-3">
         <div class="flex items-center gap-2">
-          <h2 class="text-xl font-bold text-yellow-400 drop-shadow-md">🌅 푯대를 향한 질주!</h2>
+          <h2 id="race-title-label" class="text-xl font-bold text-yellow-400 drop-shadow-md">🌅 실시간 순위</h2>
         </div>
         <div class="flex gap-2 w-full md:w-auto justify-between">
           <!-- 팀/개인 레이스 전환 탭 -->
@@ -188,7 +237,10 @@
 
       <div class="flex-1 relative custom-race-bg rounded-xl border-2 border-yellow-500/40 overflow-hidden flex flex-col items-center shadow-2xl">
         <div class="absolute bottom-3 z-10 bg-slate-900/90 px-4 py-1 rounded-lg border border-slate-600 text-xs font-bold text-slate-300 shadow-md">
-          🚩 출발선
+          🚩 ----------------------------------------------------------------------- 출발선 ----------------------------------------------------------------------
+        </div>
+        <div id="race-goal-label" class="absolute top-3 z-10 bg-slate-900/90 px-4 py-1 rounded-lg border border-yellow-500/50 text-xs font-bold text-yellow-400 shadow-md">
+          🎯 푯대
         </div>
         <div id="vertical-race-field" class="relative w-full h-full"></div>
       </div>
@@ -199,7 +251,7 @@
   <!-- 📊 마우스 드래그 이동형 실시간 점수판 모달 -->
   <div id="scoreboard-modal" class="hidden bg-slate-900/95 p-3 rounded-2xl w-72 md:w-[340px] border-2 border-yellow-500/50 shadow-2xl flex flex-col max-h-[85vh] z-30 backdrop-blur-md">
     <div id="scoreboard-header" class="flex justify-between items-center mb-2 border-b border-slate-700 pb-2 cursor-move select-none bg-slate-800/80 px-3 py-1.5 rounded-lg">
-      <h2 class="font-bold text-xs text-yellow-400 flex items-center gap-1">📊 실시간 점수판</h2>
+      <h2 class="font-bold text-xs text-yellow-400 flex items-center gap-1">📊 실시간 점수</h2>
       <button onclick="toggleScoreboardModal(false)" class="text-slate-400 hover:text-white font-bold text-sm px-1.5">✕</button>
     </div>
     
@@ -220,7 +272,7 @@
         <button onclick="closeGroupModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
       
-      <!-- 진행자 모달 탭 -->
+      <!-- 관리자 모달 탭 -->
       <div class="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
         <button id="admin-tab-team" onclick="setAdminTabMode('team')" class="flex-1 py-1 text-xs font-bold rounded tab-active transition">팀 추가/관리</button>
         <button id="admin-tab-player" onclick="setAdminTabMode('player')" class="flex-1 py-1 text-xs font-bold rounded tab-inactive transition">개인 추가/관리</button>
@@ -229,9 +281,8 @@
       <div class="space-y-2 bg-slate-700/40 p-3 rounded-lg border border-slate-600">
         <input type="text" id="new-item-name" placeholder="추가할 팀 이름" class="w-full px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white focus:border-yellow-400 outline-none">
         
-        <!-- 개인 추가일 때만 나타나는 소속팀 입력란 -->
         <div id="new-item-team-container" class="hidden">
-          <input type="text" id="new-item-team" placeholder="소속 팀 이름 (복합전만)" class="w-full px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white focus:border-yellow-400 outline-none mt-2">
+          <input type="text" id="new-item-team" placeholder="소속 팀 이름 (연동하려면 입력)" class="w-full px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white focus:border-yellow-400 outline-none mt-2">
           <p class="text-[10px] text-slate-400 mt-1 ml-1">* 소속 팀을 입력하면 개인 점수가 팀 점수에도 누적 반영됩니다.</p>
         </div>
         
@@ -257,7 +308,6 @@
     const db = firebase.database();
 
     let currentRoom = '';
-    // 유저 정보 저장
     let currentUser = { displayName: '', teamName: '', isTeamOnly: false, isAdmin: false };
     
     let teamsData = {}; 
@@ -312,7 +362,6 @@
     });
     document.addEventListener('mouseup', () => { isDragging = false; });
 
-    // 방 목록 불러오기
     window.addEventListener('DOMContentLoaded', () => {
       db.ref('rooms').on('value', (snapshot) => {
         const rooms = snapshot.val() || {};
@@ -338,7 +387,7 @@
           item.innerHTML = `
             <span class="font-bold text-yellow-300">📁 ${roomName}</span>
             <div class="flex gap-2">
-              <button onclick="enterRoomAsAdmin('${roomName}')" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 rounded text-xs font-bold">관리입장</button>
+              <button onclick="enterRoomAsAdmin('${roomName}')" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 rounded text-xs font-bold">관리</button>
               <button onclick="deleteRoom('${roomName}')" class="text-red-400 hover:text-red-300 text-xs font-bold">삭제</button>
             </div>
           `;
@@ -347,7 +396,6 @@
       });
     });
 
-    // 💡 변경점: 팀전/개인전/복합전 참가 로직
     function joinGame() {
       const roomInput = selectRoom.value;
       const groupInput = document.getElementById('input-group').value.trim();
@@ -362,7 +410,6 @@
       let tName = '';
 
       if (groupInput && !nameInput) {
-        // 1. 팀전 (팀명만 입력)
         dispName = groupInput;
         tName = groupInput;
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: true, isAdmin: false };
@@ -370,19 +417,16 @@
           if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
         });
       } else if (!groupInput && nameInput) {
-        // 2. 개인전 (개인이름만 입력)
         dispName = nameInput;
-        tName = '개인전(팀없음)';
+        tName = '개인전';
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: false, isAdmin: false };
         db.ref(`rooms/${currentRoom}/players/${nameInput}`).once('value', snap => {
           if (!snap.exists()) db.ref(`rooms/${currentRoom}/players/${nameInput}`).set({ score: 0, team: tName, order: Date.now() });
         });
       } else {
-        // 3. 복합전 (둘 다 입력)
         dispName = nameInput;
         tName = groupInput;
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: false, isAdmin: false };
-        // 팀과 개인 모두 생성
         db.ref(`rooms/${currentRoom}/teams/${groupInput}`).once('value', snap => {
           if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
         });
@@ -418,7 +462,7 @@
 
     function enterRoomAsAdmin(roomName) {
       currentRoom = roomName;
-      currentUser = { displayName: '진행자 대시보드', teamName: '진행자', isTeamOnly: false, isAdmin: true };
+      currentUser = { displayName: '', teamName: '진행자', isTeamOnly: false, isAdmin: true };
       adminDashboard.classList.add('hidden');
       initGameSession();
     }
@@ -432,9 +476,8 @@
       adminDashboard.classList.add('hidden');
       gameScreen.classList.remove('hidden');
 
-      // 상단바 표기
       let infoText = `[${currentRoom}] ${currentUser.displayName}`;
-      if (!currentUser.isAdmin && !currentUser.isTeamOnly && currentUser.teamName !== '개인전(팀없음)') {
+      if (!currentUser.isAdmin && !currentUser.isTeamOnly && currentUser.teamName !== '개인전') {
         infoText += ` (${currentUser.teamName})`;
       }
       userDisplayInfo.innerText = infoText;
@@ -464,7 +507,6 @@
     function logout() { location.reload(); }
 
     function setupRealtimeListeners() {
-      // 1. 부저 상태
       db.ref(`rooms/${currentRoom}/buzzerState`).on('value', (snapshot) => {
         const state = snapshot.val();
         if (!state) return;
@@ -485,12 +527,12 @@
         } else if (buzzerStatus === 'LOCKED') {
           buzzerBtn.disabled = true;
           buzzerBtn.className = "w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-500 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
-          buzzerStatusText.innerText = "✨ 결과 판정 완료!";
+          buzzerStatusText.innerText = "✨ 3초 안에!";
 
           if (state.resultType === 'WINNER' && state.winnerName) {
             buzzerContainerBox.className = "bg-emerald-950/80 p-8 rounded-2xl flex flex-col items-center justify-center text-center border-2 border-emerald-500 relative w-full max-w-2xl min-h-[400px] transition-colors duration-300 shadow-2xl";
             announcementTitle.className = "text-xs block uppercase font-bold tracking-wider text-emerald-300";
-            announcementTitle.innerText = "🏆 1등 적중!";
+            announcementTitle.innerText = "🏆 성경 구절을 읽어 주세요!";
             winnerText.innerText = `${state.winnerName} 님!`;
             winnerTeamText.innerText = (state.winnerTeam && state.winnerTeam !== '개인전(팀없음)' && state.winnerTeam !== state.winnerName) ? `소속: ${state.winnerTeam}` : '';
             winnerAnnouncement.className = "mb-6 block w-full bg-emerald-900/50 border-2 border-emerald-500 p-4 rounded-xl shadow-lg";
@@ -511,7 +553,6 @@
         }
       });
 
-      // 2. 팀 데이터 리스너
       db.ref(`rooms/${currentRoom}/teams`).on('value', (snapshot) => {
         teamsData = snapshot.val() || {};
         renderScoreboards();
@@ -519,13 +560,50 @@
         if (!document.getElementById('group-modal').classList.contains('hidden')) renderAdminModalList();
       });
 
-      // 3. 개인 데이터 리스너
       db.ref(`rooms/${currentRoom}/players`).on('value', (snapshot) => {
         playersData = snapshot.val() || {};
         renderScoreboards();
         if (!raceScreen.classList.contains('hidden')) renderVerticalRace();
         if (!document.getElementById('group-modal').classList.contains('hidden')) renderAdminModalList();
       });
+ 
+      db.ref(`rooms/${currentRoom}/timerState`).on('value', (snapshot) => {
+      const tData = snapshot.val();
+      if (!tData) return;
+
+      const duration = tData.duration;
+      const startTime = tData.startTime;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      let remaining = duration - elapsed;
+
+      const displayEl = document.getElementById('countdown-display');
+      const boxEl = document.getElementById('countdown-box');
+
+      if (remaining < 0) return;
+
+      displayEl.classList.remove('hidden');
+      boxEl.innerText = remaining;
+
+      // 1초마다 숫자를 깎아내리는 인터벌 실행
+      if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
+
+      window.activeTimerInterval = setInterval(() => {
+        const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+        let currentRemaining = duration - currentElapsed;
+
+        if (currentRemaining >= 0) {
+          boxEl.innerText = currentRemaining;
+        }
+
+        if (currentRemaining <= 0) {
+          clearInterval(window.activeTimerInterval);
+          boxEl.innerText = "땡! ⏰";
+          setTimeout(() => {
+            displayEl.classList.add('hidden');
+          }, 1000); // 0이 되고 1초 뒤에 숫자가 사라짐
+        }
+      }, 1000);
+    });
     }
 
     function pressBuzzer() {
@@ -565,7 +643,6 @@
       });
     }
 
-    // 뷰 탭 전환 로직
     function setSbViewMode(mode) {
       sbViewMode = mode;
       document.getElementById('sb-tab-team').className = mode === 'team' ? "flex-1 py-1 text-xs font-bold rounded tab-active transition" : "flex-1 py-1 text-xs font-bold rounded tab-inactive transition";
@@ -580,7 +657,6 @@
       renderVerticalRace();
     }
 
-    // 💡 변경점: 진행자 모달 탭 변경 시 소속팀 입력란 토글
     function setAdminTabMode(mode) {
       adminTabMode = mode;
       document.getElementById('admin-tab-team').className = mode === 'team' ? "flex-1 py-1 text-xs font-bold rounded tab-active transition" : "flex-1 py-1 text-xs font-bold rounded tab-inactive transition";
@@ -613,9 +689,8 @@
 
       entries.forEach(([name, data], index) => {
         const card = document.createElement('div');
-        // 서브 텍스트 (개인 모드일때만 소속팀 표시)
         let subTextHtml = '';
-        if (sbViewMode === 'player' && data.team && data.team !== '개인전(팀없음)') {
+        if (sbViewMode === 'player' && data.team && data.team !== '개인전') {
           subTextHtml = `<span class="text-[10px] text-slate-400 block -mt-1 truncate max-w-[100px]">${data.team}</span>`;
         }
 
@@ -642,23 +717,31 @@
       });
     }
 
+    // 💡 변경점: 관리자가 지정한 기준 점수(만점)를 반영하여 레이스 위치 고정 계산
     function renderVerticalRace() {
       verticalRaceField.innerHTML = '';
       const targetData = raceViewMode === 'team' ? teamsData : playersData;
       const entries = Object.entries(targetData);
+
+      // 관리자가 입력한 기준 점수(만점) 가져오기 (기본값 100)
+      const maxScoreInput = parseInt(document.getElementById('race-max-score-input').value) || 100;
+      
+      // 레이스 화면의 라벨 문구 실시간 업데이트
+      document.getElementById('race-title-label').innerText = `🌅 실시간 순위 (기준: ${maxScoreInput}점)`;
+      document.getElementById('race-goal-label').innerText = `🎯 푯대 (${maxScoreInput}점)`;
 
       if (entries.length === 0) {
         verticalRaceField.innerHTML = `<div class="text-slate-200 text-center py-20 font-bold bg-black/40 rounded-xl m-4">등록된 ${raceViewMode==='team'?'팀':'참가자'}가 없습니다.</div>`;
         return;
       }
 
-      let maxScore = 10;
-      entries.forEach(([_, data]) => { if (data.score > maxScore) maxScore = data.score; });
       const totalItems = entries.length;
 
       entries.forEach(([name, data], index) => {
-        let percent = Math.max(8, Math.min(85, (data.score / maxScore) * 78));
-        if (data.score <= 0) percent = 8;
+        let currentScore = data.score || 0;
+        // 지정된 만점 기준 점수를 백분율(0%~100%)로 환산하여 위치 고정 (최대 85% 지점)
+        let percent = 8 + Math.min(77, (currentScore / maxScoreInput) * 77);
+        if (currentScore <= 0) percent = 8;
 
         let horizontalPercent = totalItems === 1 ? 50 : 5 + (index * (90 / (totalItems - 1)));
         const colorClass = avatarColors[index % avatarColors.length];
@@ -669,7 +752,7 @@
         runnerNode.style.left = `${horizontalPercent}%`;
 
         runnerNode.innerHTML = `
-          <span class="text-[9px] bg-slate-900/90 text-white px-1 py-0.5 rounded border border-slate-700 font-bold shadow whitespace-nowrap mb-0.5">${name}</span>
+          <span class="text-[9px] bg-slate-900/90 text-white px-1 py-0.5 rounded border border-slate-700 font-bold shadow whitespace-nowrap mb-0.5">${name} (${currentScore}점)</span>
           <div class="w-6 h-6 md:w-8 md:h-8 rounded-full ${colorClass} flex items-center justify-center shadow-lg border-2 border-white/80 runner-avatar">
             <span class="text-[10px] md:text-sm">🏃</span>
           </div>
@@ -678,7 +761,6 @@
       });
     }
 
-    // 💡 핵심: 개인 점수 변경 시 소속팀 점수도 함께 누적!
     function updateScoreByInput(type, name, isAdd) {
       const inputVal = parseInt(document.getElementById('custom-score-input').value) || 0;
       const amount = isAdd ? inputVal : -inputVal;
@@ -686,24 +768,20 @@
       if (type === 'player') {
         const pData = playersData[name];
         if(!pData) return;
-        // 1. 개인 점수 업데이트
         db.ref(`rooms/${currentRoom}/players/${name}/score`).set((pData.score || 0) + amount);
         
-        // 2. 소속 팀이 있다면 팀 점수도 함께 연동
-        if (pData.team && pData.team !== '개인전(팀없음)') {
+        if (pData.team && pData.team !== '개인전') {
           const tData = teamsData[pData.team];
           const currentTScore = tData ? tData.score : 0;
           db.ref(`rooms/${currentRoom}/teams/${pData.team}/score`).set(currentTScore + amount);
         }
       } else if (type === 'team') {
-        // 팀에 직접 점수를 줄 때는 팀 점수만 오름
         const tData = teamsData[name];
         if(!tData) return;
         db.ref(`rooms/${currentRoom}/teams/${name}/score`).set((tData.score || 0) + amount);
       }
     }
 
-    // 진행자 모달 리스트 렌더링
     function renderAdminModalList() {
       const modalGroupList = document.getElementById('modal-group-list');
       modalGroupList.innerHTML = '';
@@ -758,7 +836,6 @@
       db.ref(`rooms/${currentRoom}/${type === 'team' ? 'teams' : 'players'}`).set(updates);
     }
 
-    // 💡 변경점: 개인 데이터 추가 시 소속팀도 함께 DB에 저장
     function addDataItem() {
       const name = document.getElementById('new-item-name').value.trim();
       if (!name) return;
@@ -769,7 +846,6 @@
         let teamName = document.getElementById('new-item-team').value.trim();
         if(!teamName) teamName = '개인전(팀없음)';
         db.ref(`rooms/${currentRoom}/players/${name}`).set({ score: 0, team: teamName, order: Date.now() });
-        // 소속팀이 입력되었다면 해당 팀도 자동으로 생성되게 지원
         if (teamName !== '개인전(팀없음)') {
           db.ref(`rooms/${currentRoom}/teams/${teamName}`).once('value', snap => {
             if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${teamName}`).set({ score: 0, order: Date.now() });
@@ -790,6 +866,16 @@
     function resetBuzzer() {
       db.ref(`rooms/${currentRoom}/buzzerState`).set({
         status: 'ACTIVE', resultType: null, winnerName: null, winnerTeam: null, firstPressTime: null, pendingCheck: false
+      });
+    }
+
+// ⏱️ 관리자 타이머 시작 함수 (Firebase에 카운트다운 상태 전송)
+    function startTimerAdmin() {
+      const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
+      db.ref(`rooms/${currentRoom}/timerState`).set({
+        duration: sec,
+        startTime: Date.now(),
+        actionId: Math.random() // 동일한 초를 다시 눌러도 리스너가 반응하도록 고유값 부여
       });
     }
 
