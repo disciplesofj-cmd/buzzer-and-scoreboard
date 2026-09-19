@@ -718,22 +718,33 @@ db.ref('.info/serverTimeOffset').on('value', function(snapshot) {
         if (!document.getElementById('group-modal').classList.contains('hidden')) renderAdminModalList();
       });
  
-      // 5. 타이머 리스너 (카운트다운 중 부저 잠금 연동)
+      // 5. 타이머 리스너 (카운트다운 중 부저 잠금 연동 - 절대 시계 완벽 적용)
       db.ref(`${roomBaseRef}/timerState`).on('value', (snapshot) => {
         const tData = snapshot.val();
-        if (!tData) return;
+        
+        // 💡 문제 해결 1: 데이터가 없거나 endTime이 없으면 안전하게 멈춤
+        if (!tData || !tData.endTime) return; 
 
-        const duration = tData.duration;
-        const startTime = tData.startTime;
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        let remaining = duration - elapsed;
-
+        // 💡 문제 해결 2: 파이어베이스에서 정확하게 endTime을 꺼냄!
+        const endTime = tData.endTime;
+        
         const displayEl = document.getElementById('countdown-display');
         const boxEl = document.getElementById('countdown-box');
 
-        if (remaining < 0) return;
+        if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
 
-        // 카운트다운 시작: 부저 잠금 설정
+        // 1. 구글 서버 시각 기준으로 진짜 현재 시각 계산
+        const trueNow = Date.now() + serverTimeOffset;
+        let initialRemaining = Math.ceil((endTime - trueNow) / 1000);
+
+        // 2. 과거의 유령 방어막: 이미 0초 이하로 끝난 기록이면 화면 숨기고 무시
+        if (initialRemaining <= 0) {
+            displayEl.classList.add('hidden'); 
+            isCountingDown = false;
+            return; 
+        }
+
+        // 3. 정상적인 새 타이머 시작: 즉시 부저 잠금 설정
         isCountingDown = true;
         if (!currentUser.isAdmin) {
           buzzerBtn.disabled = true;
@@ -742,63 +753,31 @@ db.ref('.info/serverTimeOffset').on('value', function(snapshot) {
         }
 
         displayEl.classList.remove('hidden');
-        boxEl.innerText = remaining;
 
-        if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
+        // 4. 절대 시계 카운트다운 인터벌 시작
+        window.activeTimerInterval = setInterval(() => {
+            let currentRemaining = Math.ceil((endTime - (Date.now() + serverTimeOffset)) / 1000);
 
-        // 💡 주의: 이 부분 바로 위쪽에 파이어베이스에서 데이터를 읽어오는 코드가 있을 것입니다.
-// 거기서 가져온 데이터 객체(예: data, val, state 등)에서 endTime을 뽑아와야 합니다.
-// (예시: const endTime = data.endTime; 또는 const endTime = val.endTime;)
+            if (currentRemaining > 0) {
+                boxEl.innerText = currentRemaining;
+            } else {
+                clearInterval(window.activeTimerInterval);
+                boxEl.innerText = "땡! ⏰";
+                
+                setTimeout(() => {
+                    displayEl.classList.add('hidden');
+                    isCountingDown = false; 
 
-if (window.activeTimerInterval) clearInterval(window.activeTimerInterval); // 기존 타이머가 돌고 있다면 깨끗하게 정지
-
-// 💡 파이어베이스 DB에서 가져온 endTime
-// const endTime = data.endTime; (이 부분은 기존 코드에 맞춰주세요)
-
-if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
-
-// 1. 구글 서버 시각 기준으로 진짜 현재 시각 계산
-const trueNow = Date.now() + serverTimeOffset;
-let initialRemaining = Math.ceil((endTime - trueNow) / 1000);
-
-// 2. 🛡️ 방어막: 이미 0초 이하로 끝난 과거의 타이머 기록이라면 무시!
-if (initialRemaining <= 0) {
-    displayEl.classList.add('hidden'); // 화면에 아예 안 띄움
-    isCountingDown = false;
-    return; // 여기서 함수 완전 종료
-}
-
-// 3. 새 타이머가 맞다면 화면에 타이머 박스 등장!
-displayEl.classList.remove('hidden');
-
-window.activeTimerInterval = setInterval(() => {
-    // 인터벌 안에서도 항상 구글 서버 시각 기준으로 계산
-    let currentRemaining = Math.ceil((endTime - (Date.now() + serverTimeOffset)) / 1000);
-
-    if (currentRemaining > 0) {
-        boxEl.innerText = currentRemaining;
-    } else {
-        // 시간이 다 되면 종료
-        clearInterval(window.activeTimerInterval);
-        boxEl.innerText = "땡! ⏰";
-        
-        setTimeout(() => {
-            displayEl.classList.add('hidden');
-            isCountingDown = false; 
-
-            // (기존 로직 유지) 부저가 ACTIVE 상태라면 부저 잠금 해제
-            if (typeof buzzerStatus !== 'undefined' && buzzerStatus === 'ACTIVE' && (!currentUser || !currentUser.isAdmin)) {
-                if(typeof buzzerBtn !== 'undefined') {
-                    buzzerBtn.disabled = false;
-                    buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
-                    if(typeof buzzerStatusText !== 'undefined') buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
-                }
+                    // 5. 카운트 종료 후 부저가 ACTIVE 상태라면 참가자 부저 잠금 해제
+                    if (buzzerStatus === 'ACTIVE' && (!currentUser || !currentUser.isAdmin)) {
+                        buzzerBtn.disabled = false;
+                        buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
+                        buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
+                    }
+                }, 1000);
             }
-        }, 1000);
-    }
-}, 100);
+        }, 100);
       });
-    }
 
   function pressBuzzer() {
       if (buzzerStatus !== 'ACTIVE' || isCountingDown) return; // 카운트다운 중이면 무시
