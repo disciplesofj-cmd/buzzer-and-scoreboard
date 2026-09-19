@@ -740,15 +740,20 @@
 
         if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
 
-        window.activeTimerInterval = setInterval(() => {
-          const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
-          let currentRemaining = duration - currentElapsed;
+        // 💡 주의: 이 부분 바로 위쪽에 파이어베이스에서 데이터를 읽어오는 코드가 있을 것입니다.
+// 거기서 가져온 데이터 객체(예: data, val, state 등)에서 endTime을 뽑아와야 합니다.
+// (예시: const endTime = data.endTime; 또는 const endTime = val.endTime;)
 
-          if (currentRemaining >= 0) {
+if (window.activeTimerInterval) clearInterval(window.activeTimerInterval); // 기존 타이머가 돌고 있다면 깨끗하게 정지
+
+window.activeTimerInterval = setInterval(() => {
+          // ✨ 핵심: 방장이 저장한 절대 종료 시각(endTime)에서 내 폰의 현재 시각을 뺍니다.
+          let currentRemaining = Math.ceil((endTime - Date.now()) / 1000);
+
+          if (currentRemaining > 0) {
             boxEl.innerText = currentRemaining;
-          }
-
-          if (currentRemaining <= 0) {
+          } else {
+            // 시간이 0 이하로 떨어지면 무조건 타이머 정지
             clearInterval(window.activeTimerInterval);
             boxEl.innerText = "땡! ⏰";
             
@@ -756,7 +761,7 @@
               displayEl.classList.add('hidden');
               isCountingDown = false; // 카운트 종료
 
-              // 부저가 ACTIVE 상태라면 참가자 부저 잠금 해제
+              // 💡 (기존 로직 유지) 부저가 ACTIVE 상태라면 참가자 부저 잠금 해제
               if (buzzerStatus === 'ACTIVE' && !currentUser.isAdmin) {
                 buzzerBtn.disabled = false;
                 buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
@@ -764,7 +769,7 @@
               }
             }, 1000);
           }
-        }, 1000);
+        }, 100); // 💡 1000(1초) 간격 대신 100(0.1초) 간격으로 촘촘히 감시하여 딜레이 방지
       });
     }
 
@@ -1029,14 +1034,18 @@
       });
     }
 
-    function startTimerAdmin() {
+    // 👨‍🏫 [방장/진행자용] 타이머 시작 엔진 (절대 시계 방식 적용)
+function startTimerAdmin() {
       const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
+      const absoluteEndTime = Date.now() + (sec * 1000); // 💡 현재 시각 + 입력한 초(sec) = 절대 종료 시각 계산
+
       db.ref(`departments/${currentDept}/${currentRoom}/timerState`).set({
         duration: sec,
         startTime: Date.now(),
+        endTime: absoluteEndTime, // ✨ 이 값이 추가되었습니다! 모두가 바라볼 '끝나는 시각'
         actionId: Math.random()
       });
-    }
+}
 
     function openGroupModal() {
       document.getElementById('group-modal').classList.remove('hidden');
