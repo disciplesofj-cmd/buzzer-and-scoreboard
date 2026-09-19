@@ -113,7 +113,7 @@
     <div id="admin-dashboard" class="hidden bg-slate-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-lg mx-auto w-full">
       <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
         <h2 class="text-xl font-bold text-yellow-400">🛠️ 진행자 방 대시보드</h2>
-        <button onclick="logout()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">로그아웃</button>
+        <button onclick="fullAdminLogout()" class="text-xs bg-red-600/80 hover:bg-red-500 px-3 py-1 rounded text-white font-bold transition">로그아웃</button>
       </div>
 
       <div class="space-y-6">
@@ -629,8 +629,30 @@ db.ref('.info/serverTimeOffset').on('value', function(snapshot) {
     }
 
     function logout() { 
+      // 1. 진행자(관리자)인 경우: 대시보드(방 선택 목록)로 복귀
+      if (currentUser && currentUser.isAdmin) {
+        // 방 세션 초기화 (부서/방 정보 제거)
+        currentDept = '';
+        currentRoom = '';
+        sessionStorage.removeItem('quiz_session');
+
+        // 화면 전환: 게임 화면/레이스 화면 숨기고 진행자 대시보드 표시
+        gameScreen.classList.add('hidden');
+        raceScreen.classList.add('hidden');
+        scoreboardModal.classList.add('hidden');
+        adminDashboard.classList.remove('hidden');
+        return;
+      }
+
+      // 2. 일반 참가자(학생)인 경우: 완전 초기화 후 첫 로그인 화면으로 이동
       sessionStorage.removeItem('quiz_session');
       location.reload(); 
+    }
+
+    // 💡 진행자 대시보드에서 시스템을 완전히 종료할 때 쓰는 진짜 로그아웃
+    function fullAdminLogout() {
+      sessionStorage.removeItem('quiz_session');
+      location.reload();
     }
 
     function setupRealtimeListeners() {
