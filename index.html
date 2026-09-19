@@ -778,6 +778,7 @@ db.ref('.info/serverTimeOffset').on('value', function(snapshot) {
             }
         }, 100);
       });
+}
 
   function pressBuzzer() {
       if (buzzerStatus !== 'ACTIVE' || isCountingDown) return; // 카운트다운 중이면 무시
