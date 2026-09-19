@@ -63,12 +63,23 @@
       <p class="text-slate-400 text-sm mb-6">팀전/개인전/복합전 방식에 따라 정보를 입력하세요.</p>
       
       <div class="space-y-4 text-left">
-        <div>
-          <label class="block text-sm mb-1 text-slate-300">진행 중인 방 선택</label>
-          <select id="select-room" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white font-bold text-yellow-300">
-            <option value="">-- 진행자가 만든 방을 불러오는 중... --</option>
-          </select>
+
+        <!-- 2단계 방 선택: 부서 선택 후 세부 방 선택 -->
+        <div class="space-y-2">
+          <div>
+            <label class="block text-sm mb-1 text-slate-300">1. 부서 선택</label>
+            <select id="select-dept" onchange="onDeptChange()" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white font-bold text-yellow-300">
+              <option value="">-- 부서를 선택하세요 --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm mb-1 text-slate-300">2. 대회(방) 선택</label>
+            <select id="select-room" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white font-bold text-yellow-300">
+              <option value="">-- 먼저 부서를 선택하세요 --</option>
+            </select>
+          </div>
         </div>
+
         <div>
           <label class="block text-sm mb-1 text-slate-300">소속 반 / 팀 이름 <span class="text-xs text-slate-500">(팀전 또는 복합전 시)</span></label>
           <input type="text" id="input-group" placeholder="예: 팀전 또는 복합전 시 (팀명을 입력하세요.)" class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:border-yellow-400 text-white">
@@ -107,10 +118,13 @@
 
       <div class="space-y-6">
         <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600 space-y-3">
-          <h3 class="text-sm font-bold text-slate-200">새로운 퀴즈 방 만들기</h3>
-          <div class="flex gap-2">
-            <input type="text" id="new-room-code" placeholder="방 이름 (예: 중등부퀴즈)" class="flex-1 px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white">
-            <button onclick="createRoom()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-sm font-bold transition">방 생성</button>
+          <h3 class="text-sm font-bold text-slate-200">새로운 대회 방 개설</h3>
+          <div class="space-y-2">
+            <input type="text" id="new-room-dept" placeholder="부서명 (예: 중고등부, 초등부)" class="w-full px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white focus:outline-none focus:border-yellow-400">
+            <div class="flex gap-2">
+              <input type="text" id="new-room-code" placeholder="대회(방) 이름 (예: 성경퀴즈대회, 암송대회)" class="flex-1 px-3 py-2 bg-slate-800 rounded text-sm border border-slate-600 text-white focus:outline-none focus:border-yellow-400">
+              <button onclick="createRoom()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-sm font-bold transition whitespace-nowrap text-white">방 개설</button>
+            </div>
           </div>
         </div>
 
@@ -316,15 +330,37 @@
     const db = firebase.database();
 
     let currentRoom = '';
+    let currentDept = '';
     let currentUser = { displayName: '', teamName: '', isTeamOnly: false, isAdmin: false };
     
     let teamsData = {}; 
     let playersData = {}; 
     let buzzerStatus = 'IDLE'; 
+    let isCountingDown = false; // 카운트다운 중 부저 잠금 플래그
 
     let sbViewMode = 'team'; 
     let raceViewMode = 'team';
     let adminTabMode = 'team';
+
+    let allRoomsCache = {}; // 부서별 방 캐시
+
+// 💡 새로고침 시 세션 정보가 남아있다면 해당 방과 권한으로 자동 복구
+    window.addEventListener('load', () => {
+      const savedSession = sessionStorage.getItem('quiz_session');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession);
+          currentDept = parsed.currentDept;
+          currentRoom = parsed.currentRoom;
+          currentUser = parsed.currentUser;
+          if (currentDept && currentRoom && currentUser) {
+            initGameSession();
+          }
+        } catch (e) {
+          sessionStorage.removeItem('quiz_session');
+        }
+      }
+    });
 
     const avatarColors = [
       "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", 
@@ -370,48 +406,99 @@
     });
     document.addEventListener('mouseup', () => { isDragging = false; });
 
-    window.addEventListener('DOMContentLoaded', () => {
-      db.ref('rooms').on('value', (snapshot) => {
-        const rooms = snapshot.val() || {};
-        const roomKeys = Object.keys(rooms);
+   window.addEventListener('DOMContentLoaded', () => {
+      db.ref('departments').on('value', (snapshot) => {
+        allRoomsCache = snapshot.val() || {};
+        const deptKeys = Object.keys(allRoomsCache);
 
-        selectRoom.innerHTML = '<option value="">-- 진행 중인 방을 선택하세요 --</option>';
+        const selectDept = document.getElementById('select-dept');
+        selectDept.innerHTML = '<option value="">-- 부서를 선택하세요 --</option>';
         adminRoomList.innerHTML = '';
 
-        if (roomKeys.length === 0) {
-          selectRoom.innerHTML = '<option value="">-- 개설된 방이 없습니다 --</option>';
-          adminRoomList.innerHTML = '<div class="text-slate-400 text-xs text-center py-4">방이 없습니다. 방을 만들어주세요.</div>';
+        if (deptKeys.length === 0) {
+          selectDept.innerHTML = '<option value="">-- 부서 선택 --</option>';
+          selectRoom.innerHTML = '<option value="">-- 대회 선택 --</option>';
+          adminRoomList.innerHTML = '<div class="text-slate-400 text-xs text-center py-4">개설된 방이 없습니다. 새 방을 개설해 주세요.</div>';
           return;
         }
 
-        roomKeys.forEach(roomName => {
+        deptKeys.forEach(deptName => {
           const opt = document.createElement('option');
-          opt.value = roomName;
-          opt.innerText = roomName;
-          selectRoom.appendChild(opt);
+          opt.value = deptName;
+          opt.innerText = deptName;
+          selectDept.appendChild(opt);
 
-          const item = document.createElement('div');
-          item.className = "flex justify-between items-center bg-slate-700 px-3 py-2 rounded text-sm";
-          item.innerHTML = `
-            <span class="font-bold text-yellow-300">📁 ${roomName}</span>
-            <div class="flex gap-2">
-              <button onclick="enterRoomAsAdmin('${roomName}')" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 rounded text-xs font-bold">관리</button>
-              <button onclick="deleteRoom('${roomName}')" class="text-red-400 hover:text-red-300 text-xs font-bold">삭제</button>
-            </div>
-          `;
-          adminRoomList.appendChild(item);
+          // 진행자 대시보드 리스트 출력
+          const deptHeader = document.createElement('div');
+          deptHeader.className = "text-xs font-bold text-yellow-400 mt-3 mb-1 border-b border-slate-600 pb-1";
+          deptHeader.innerText = `📂 ${deptName}`;
+          adminRoomList.appendChild(deptHeader);
+
+          const roomsInDept = allRoomsCache[deptName] || {};
+          const roomNames = Object.keys(roomsInDept);
+
+          if (roomNames.length === 0) {
+            const emptyEl = document.createElement('div');
+            emptyEl.className = "text-slate-500 text-xs pl-2 py-1";
+            emptyEl.innerText = "개설된 세부 방이 없습니다.";
+            adminRoomList.appendChild(emptyEl);
+          } else {
+            roomNames.forEach(roomName => {
+              const item = document.createElement('div');
+              item.className = "flex justify-between items-center bg-slate-700 px-3 py-2 rounded text-sm mb-1";
+              item.innerHTML = `
+                <span class="font-medium text-slate-200">↳ 📖 ${roomName}</span>
+                <div class="flex gap-2">
+                  <button onclick="enterRoomAsAdmin('${deptName}', '${roomName}')" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 rounded text-xs font-bold text-white">입장</button>
+                  <button onclick="deleteRoom('${deptName}', '${roomName}')" class="text-red-400 hover:text-red-300 text-xs font-bold">삭제</button>
+                </div>
+              `;
+              adminRoomList.appendChild(item);
+            });
+          }
         });
+
+        // 이미 부서가 선택된 상태라면 하위 방 드롭다운 갱신
+        if (selectDept.value) {
+          onDeptChange();
+        }
       });
     });
 
-    function joinGame() {
+    function onDeptChange() {
+      const selectedDept = document.getElementById('select-dept').value;
+      selectRoom.innerHTML = '<option value="">-- 대회(방)를 선택하세요 --</option>';
+
+      if (!selectedDept || !allRoomsCache[selectedDept]) {
+        selectRoom.innerHTML = '<option value="">-- 먼저 부서를 선택하세요 --</option>';
+        return;
+      }
+
+      const rooms = Object.keys(allRoomsCache[selectedDept]);
+      if (rooms.length === 0) {
+        selectRoom.innerHTML = '<option value="">-- 해당 부서에 개설된 방이 없습니다 --</option>';
+        return;
+      }
+
+      rooms.forEach(roomName => {
+        const opt = document.createElement('option');
+        opt.value = roomName;
+        opt.innerText = roomName;
+        selectRoom.appendChild(opt);
+      });
+    }
+
+   function joinGame() {
+      const deptInput = document.getElementById('select-dept').value;
       const roomInput = selectRoom.value;
       const groupInput = document.getElementById('input-group').value.trim();
       const nameInput = document.getElementById('input-name').value.trim();
 
-      if (!roomInput) { alert('방을 선택해주세요.'); return; }
+      if (!deptInput) { alert('부서를 선택해주세요.'); return; }
+      if (!roomInput) { alert('대회(방)를 선택해주세요.'); return; }
       if (!groupInput && !nameInput) { alert('소속 팀 이름이나 참가자 이름 중 하나는 필수로 입력해주세요.'); return; }
 
+      currentDept = deptInput;
       currentRoom = roomInput;
       
       let dispName = '';
@@ -421,28 +508,29 @@
         dispName = groupInput;
         tName = groupInput;
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: true, isAdmin: false };
-        db.ref(`rooms/${currentRoom}/teams/${groupInput}`).once('value', snap => {
-          if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
+        db.ref(`departments/${currentDept}/${currentRoom}/teams/${groupInput}`).once('value', snap => {
+          if (!snap.exists()) db.ref(`departments/${currentDept}/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
         });
       } else if (!groupInput && nameInput) {
         dispName = nameInput;
         tName = '개인전';
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: false, isAdmin: false };
-        db.ref(`rooms/${currentRoom}/players/${nameInput}`).once('value', snap => {
-          if (!snap.exists()) db.ref(`rooms/${currentRoom}/players/${nameInput}`).set({ score: 0, team: tName, order: Date.now() });
+        db.ref(`departments/${currentDept}/${currentRoom}/players/${nameInput}`).once('value', snap => {
+          if (!snap.exists()) db.ref(`departments/${currentDept}/${currentRoom}/players/${nameInput}`).set({ score: 0, team: tName, order: Date.now() });
         });
       } else {
         dispName = nameInput;
         tName = groupInput;
         currentUser = { displayName: dispName, teamName: tName, isTeamOnly: false, isAdmin: false };
-        db.ref(`rooms/${currentRoom}/teams/${groupInput}`).once('value', snap => {
-          if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
+        db.ref(`departments/${currentDept}/${currentRoom}/teams/${groupInput}`).once('value', snap => {
+          if (!snap.exists()) db.ref(`departments/${currentDept}/${currentRoom}/teams/${groupInput}`).set({ score: 0, order: Date.now() });
         });
-        db.ref(`rooms/${currentRoom}/players/${nameInput}`).once('value', snap => {
-          if (!snap.exists()) db.ref(`rooms/${currentRoom}/players/${nameInput}`).set({ score: 0, team: tName, order: Date.now() });
+        db.ref(`departments/${currentDept}/${currentRoom}/players/${nameInput}`).once('value', snap => {
+          if (!snap.exists()) db.ref(`departments/${currentDept}/${currentRoom}/players/${nameInput}`).set({ score: 0, team: tName, order: Date.now() });
         });
       }
 
+      sessionStorage.setItem('quiz_session', JSON.stringify({ currentDept, currentRoom, currentUser }));
       initGameSession();
     }
 
@@ -458,25 +546,33 @@
     }
 
     function createRoom() {
+      const deptName = document.getElementById('new-room-dept').value.trim();
       const roomName = document.getElementById('new-room-code').value.trim();
-      if (!roomName) return;
-      db.ref(`rooms/${roomName}/buzzerState`).once('value', (snap) => {
-        if (snap.exists()) { alert('이미 존재하는 방입니다.'); return; }
-        db.ref(`rooms/${roomName}/buzzerState`).set({ status: 'IDLE', resultType: null, winnerName: null, winnerTeam: null, firstPressTime: null, pendingCheck: false });
+      if (!deptName) { alert('부서명을 입력하세요.'); return; }
+      if (!roomName) { alert('대회(방) 이름을 입력하세요.'); return; }
+
+      const targetRef = db.ref(`departments/${deptName}/${roomName}/buzzerState`);
+      targetRef.once('value', (snap) => {
+        if (snap.exists()) { alert('해당 부서에 이미 존재하는 대회 방입니다.'); return; }
+        targetRef.set({ status: 'IDLE', resultType: null, winnerName: null, winnerTeam: null, firstPressTime: null, pendingCheck: false });
         document.getElementById('new-room-code').value = '';
-        alert(`'${roomName}' 방이 생성되었습니다!`);
+        alert(`[${deptName}] ${roomName} 방이 개설되었습니다!`);
       });
     }
 
-    function enterRoomAsAdmin(roomName) {
+    function enterRoomAsAdmin(deptName, roomName) {
+      currentDept = deptName;
       currentRoom = roomName;
       currentUser = { displayName: '', teamName: '진행자', isTeamOnly: false, isAdmin: true };
       adminDashboard.classList.add('hidden');
+      sessionStorage.setItem('quiz_session', JSON.stringify({ currentDept, currentRoom, currentUser }));
       initGameSession();
     }
 
-    function deleteRoom(roomName) {
-      if (confirm(`'${roomName}' 방 데이터를 전부 삭제하시겠습니까?`)) db.ref(`rooms/${roomName}`).remove();
+    function deleteRoom(deptName, roomName) {
+      if (confirm(`[${deptName}] '${roomName}' 방 데이터를 전부 삭제하시겠습니까?`)) {
+        db.ref(`departments/${deptName}/${roomName}`).remove();
+      }
     }
 
     function initGameSession() {
@@ -484,7 +580,7 @@
       adminDashboard.classList.add('hidden');
       gameScreen.classList.remove('hidden');
 
-      let infoText = `[${currentRoom}] ${currentUser.displayName}`;
+      let infoText = `[${currentDept}/${currentRoom}] ${currentUser.displayName}`;
       if (!currentUser.isAdmin && !currentUser.isTeamOnly && currentUser.teamName !== '개인전') {
         infoText += ` (${currentUser.teamName})`;
       }
@@ -502,20 +598,18 @@
       setupRealtimeListeners();
     }
 
-    // 💡 관리자가 점수판 토글 시 Firebase에 동기화
     function toggleScoreboardModal(show) {
       if (currentUser.isAdmin) {
-        db.ref(`rooms/${currentRoom}/uiState/scoreboardOpen`).set(show);
+        db.ref(`departments/${currentDept}/${currentRoom}/uiState/scoreboardOpen`).set(show);
       } else {
         if (show) scoreboardModal.classList.remove('hidden');
         else scoreboardModal.classList.add('hidden');
       }
     }
 
-    // 💡 관리자가 레이스 뷰 토글 시 Firebase에 동기화
     function toggleRaceView(showRace) {
       if (currentUser.isAdmin) {
-        db.ref(`rooms/${currentRoom}/uiState/raceOpen`).set(showRace);
+        db.ref(`departments/${currentDept}/${currentRoom}/uiState/raceOpen`).set(showRace);
       } else {
         if (showRace) {
           gameScreen.classList.add('hidden');
@@ -528,23 +622,27 @@
       }
     }
 
-    function logout() { location.reload(); }
+    function logout() { 
+      sessionStorage.removeItem('quiz_session');
+      location.reload(); 
+    }
 
     function setupRealtimeListeners() {
+      const roomBaseRef = `departments/${currentDept}/${currentRoom}`;
+
       // 1. 부저 상태 리스너
-      db.ref(`rooms/${currentRoom}/buzzerState`).on('value', (snapshot) => {
+      db.ref(`${roomBaseRef}/buzzerState`).on('value', (snapshot) => {
         const state = snapshot.val();
         if (!state) return;
         buzzerStatus = state.status; 
 
         if (buzzerStatus === 'ACTIVE') {
           buzzerContainerBox.className = "bg-slate-800 p-8 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-700 relative w-full max-w-2xl min-h-[400px] transition-colors duration-300 shadow-2xl";
-          buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
+          buzzerStatusText.innerText = isCountingDown ? "⏳ 카운트다운 진행 중... 잠시 대기!" : "🚨 지금 부저를 누르세요!";
           winnerAnnouncement.classList.add('hidden');
           
-          if (!currentUser.isAdmin) {
+          if (!currentUser.isAdmin && !isCountingDown) {
             buzzerBtn.disabled = false;
-            // 💡 z-index 강화
             buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
           } else {
             buzzerBtn.disabled = true;
@@ -579,10 +677,9 @@
         }
       });
 
-      // 2. 💡 관리자가 점수판이나 레이스를 켤 때 참가자 화면에 실시간 동기화
-      db.ref(`rooms/${currentRoom}/uiState`).on('value', (snapshot) => {
+      // 2. 화면 동기화 리스너
+      db.ref(`${roomBaseRef}/uiState`).on('value', (snapshot) => {
         const ui = snapshot.val() || {};
-        
         if (ui.scoreboardOpen) {
           scoreboardModal.classList.remove('hidden');
         } else {
@@ -600,7 +697,7 @@
       });
 
       // 3. 팀 데이터 리스너
-      db.ref(`rooms/${currentRoom}/teams`).on('value', (snapshot) => {
+      db.ref(`${roomBaseRef}/teams`).on('value', (snapshot) => {
         teamsData = snapshot.val() || {};
         renderScoreboards();
         if (!raceScreen.classList.contains('hidden')) renderVerticalRace();
@@ -608,15 +705,15 @@
       });
 
       // 4. 개인 데이터 리스너
-      db.ref(`rooms/${currentRoom}/players`).on('value', (snapshot) => {
+      db.ref(`${roomBaseRef}/players`).on('value', (snapshot) => {
         playersData = snapshot.val() || {};
         renderScoreboards();
         if (!raceScreen.classList.contains('hidden')) renderVerticalRace();
         if (!document.getElementById('group-modal').classList.contains('hidden')) renderAdminModalList();
       });
  
-      // 5. 타이머 상태 리스너
-      db.ref(`rooms/${currentRoom}/timerState`).on('value', (snapshot) => {
+      // 5. 타이머 리스너 (카운트다운 중 부저 잠금 연동)
+      db.ref(`${roomBaseRef}/timerState`).on('value', (snapshot) => {
         const tData = snapshot.val();
         if (!tData) return;
 
@@ -629,6 +726,14 @@
         const boxEl = document.getElementById('countdown-box');
 
         if (remaining < 0) return;
+
+        // 카운트다운 시작: 부저 잠금 설정
+        isCountingDown = true;
+        if (!currentUser.isAdmin) {
+          buzzerBtn.disabled = true;
+          buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-slate-700 text-slate-400 font-black text-3xl md:text-4xl shadow-2xl flex items-center justify-center border-8 border-slate-600 cursor-not-allowed";
+          buzzerStatusText.innerText = "⏳ 카운트다운 진행 중... 잠시 대기!";
+        }
 
         displayEl.classList.remove('hidden');
         boxEl.innerText = remaining;
@@ -646,17 +751,26 @@
           if (currentRemaining <= 0) {
             clearInterval(window.activeTimerInterval);
             boxEl.innerText = "땡! ⏰";
+            
             setTimeout(() => {
               displayEl.classList.add('hidden');
+              isCountingDown = false; // 카운트 종료
+
+              // 부저가 ACTIVE 상태라면 참가자 부저 잠금 해제
+              if (buzzerStatus === 'ACTIVE' && !currentUser.isAdmin) {
+                buzzerBtn.disabled = false;
+                buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
+                buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
+              }
             }, 1000);
           }
         }, 1000);
       });
     }
 
-    function pressBuzzer() {
-      if (buzzerStatus !== 'ACTIVE') return;
-      const buzzerRef = db.ref(`rooms/${currentRoom}/buzzerState`);
+  function pressBuzzer() {
+      if (buzzerStatus !== 'ACTIVE' || isCountingDown) return; // 카운트다운 중이면 무시
+      const buzzerRef = db.ref(`departments/${currentDept}/${currentRoom}/buzzerState`);
       buzzerRef.transaction((current) => {
         if (current && current.status === 'ACTIVE') {
           const now = Date.now();
@@ -805,24 +919,25 @@
       });
     }
 
-    function updateScoreByInput(type, name, isAdd) {
+  function updateScoreByInput(type, name, isAdd) {
       const inputVal = parseInt(document.getElementById('custom-score-input').value) || 0;
       const amount = isAdd ? inputVal : -inputVal;
+      const roomBaseRef = `departments/${currentDept}/${currentRoom}`;
       
       if (type === 'player') {
         const pData = playersData[name];
         if(!pData) return;
-        db.ref(`rooms/${currentRoom}/players/${name}/score`).set((pData.score || 0) + amount);
+        db.ref(`${roomBaseRef}/players/${name}/score`).set((pData.score || 0) + amount);
         
         if (pData.team && pData.team !== '개인전') {
           const tData = teamsData[pData.team];
           const currentTScore = tData ? tData.score : 0;
-          db.ref(`rooms/${currentRoom}/teams/${pData.team}/score`).set(currentTScore + amount);
+          db.ref(`${roomBaseRef}/teams/${pData.team}/score`).set(currentTScore + amount);
         }
       } else if (type === 'team') {
         const tData = teamsData[name];
         if(!tData) return;
-        db.ref(`rooms/${currentRoom}/teams/${name}/score`).set((tData.score || 0) + amount);
+        db.ref(`${roomBaseRef}/teams/${name}/score`).set((tData.score || 0) + amount);
       }
     }
 
@@ -877,22 +992,23 @@
 
       let updates = {};
       entries.forEach(([name, val]) => { updates[name] = val; });
-      db.ref(`rooms/${currentRoom}/${type === 'team' ? 'teams' : 'players'}`).set(updates);
+      db.ref(`departments/${currentDept}/${currentRoom}/${type === 'team' ? 'teams' : 'players'}`).set(updates);
     }
 
     function addDataItem() {
       const name = document.getElementById('new-item-name').value.trim();
       if (!name) return;
+      const roomBaseRef = `departments/${currentDept}/${currentRoom}`;
       
       if (adminTabMode === 'team') {
-        db.ref(`rooms/${currentRoom}/teams/${name}`).set({ score: 0, order: Date.now() });
+        db.ref(`${roomBaseRef}/teams/${name}`).set({ score: 0, order: Date.now() });
       } else {
         let teamName = document.getElementById('new-item-team').value.trim();
         if(!teamName) teamName = '개인전(팀없음)';
-        db.ref(`rooms/${currentRoom}/players/${name}`).set({ score: 0, team: teamName, order: Date.now() });
+        db.ref(`${roomBaseRef}/players/${name}`).set({ score: 0, team: teamName, order: Date.now() });
         if (teamName !== '개인전(팀없음)') {
-          db.ref(`rooms/${currentRoom}/teams/${teamName}`).once('value', snap => {
-            if (!snap.exists()) db.ref(`rooms/${currentRoom}/teams/${teamName}`).set({ score: 0, order: Date.now() });
+          db.ref(`${roomBaseRef}/teams/${teamName}`).once('value', snap => {
+            if (!snap.exists()) db.ref(`${roomBaseRef}/teams/${teamName}`).set({ score: 0, order: Date.now() });
           });
         }
       }
@@ -903,19 +1019,19 @@
 
     function deleteDataAdmin(type, name) {
       if (confirm(`정말 '${name}' 항목을 삭제하시겠습니까?`)) {
-        db.ref(`rooms/${currentRoom}/${type === 'team' ? 'teams' : 'players'}/${name}`).remove();
+        db.ref(`departments/${currentDept}/${currentRoom}/${type === 'team' ? 'teams' : 'players'}/${name}`).remove();
       }
     }
 
     function resetBuzzer() {
-      db.ref(`rooms/${currentRoom}/buzzerState`).set({
+      db.ref(`departments/${currentDept}/${currentRoom}/buzzerState`).set({
         status: 'ACTIVE', resultType: null, winnerName: null, winnerTeam: null, firstPressTime: null, pendingCheck: false
       });
     }
 
     function startTimerAdmin() {
       const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
-      db.ref(`rooms/${currentRoom}/timerState`).set({
+      db.ref(`departments/${currentDept}/${currentRoom}/timerState`).set({
         duration: sec,
         startTime: Date.now(),
         actionId: Math.random()
