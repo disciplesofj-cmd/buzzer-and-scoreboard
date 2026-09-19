@@ -329,6 +329,12 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+// ⏱️ 기기별 시계 오차 보정 변수 (구글 서버 기준)
+let serverTimeOffset = 0;
+db.ref('.info/serverTimeOffset').on('value', function(snapshot) {
+    serverTimeOffset = snapshot.val() || 0;
+});
+
     let currentRoom = '';
     let currentDept = '';
     let currentUser = { displayName: '', teamName: '', isTeamOnly: false, isAdmin: false };
@@ -746,30 +752,51 @@
 
 if (window.activeTimerInterval) clearInterval(window.activeTimerInterval); // 기존 타이머가 돌고 있다면 깨끗하게 정지
 
+// 💡 파이어베이스 DB에서 가져온 endTime
+// const endTime = data.endTime; (이 부분은 기존 코드에 맞춰주세요)
+
+if (window.activeTimerInterval) clearInterval(window.activeTimerInterval);
+
+// 1. 구글 서버 시각 기준으로 진짜 현재 시각 계산
+const trueNow = Date.now() + serverTimeOffset;
+let initialRemaining = Math.ceil((endTime - trueNow) / 1000);
+
+// 2. 🛡️ 방어막: 이미 0초 이하로 끝난 과거의 타이머 기록이라면 무시!
+if (initialRemaining <= 0) {
+    displayEl.classList.add('hidden'); // 화면에 아예 안 띄움
+    isCountingDown = false;
+    return; // 여기서 함수 완전 종료
+}
+
+// 3. 새 타이머가 맞다면 화면에 타이머 박스 등장!
+displayEl.classList.remove('hidden');
+
 window.activeTimerInterval = setInterval(() => {
-          // ✨ 핵심: 방장이 저장한 절대 종료 시각(endTime)에서 내 폰의 현재 시각을 뺍니다.
-          let currentRemaining = Math.ceil((endTime - Date.now()) / 1000);
+    // 인터벌 안에서도 항상 구글 서버 시각 기준으로 계산
+    let currentRemaining = Math.ceil((endTime - (Date.now() + serverTimeOffset)) / 1000);
 
-          if (currentRemaining > 0) {
-            boxEl.innerText = currentRemaining;
-          } else {
-            // 시간이 0 이하로 떨어지면 무조건 타이머 정지
-            clearInterval(window.activeTimerInterval);
-            boxEl.innerText = "땡! ⏰";
-            
-            setTimeout(() => {
-              displayEl.classList.add('hidden');
-              isCountingDown = false; // 카운트 종료
+    if (currentRemaining > 0) {
+        boxEl.innerText = currentRemaining;
+    } else {
+        // 시간이 다 되면 종료
+        clearInterval(window.activeTimerInterval);
+        boxEl.innerText = "땡! ⏰";
+        
+        setTimeout(() => {
+            displayEl.classList.add('hidden');
+            isCountingDown = false; 
 
-              // 💡 (기존 로직 유지) 부저가 ACTIVE 상태라면 참가자 부저 잠금 해제
-              if (buzzerStatus === 'ACTIVE' && !currentUser.isAdmin) {
-                buzzerBtn.disabled = false;
-                buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
-                buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
-              }
-            }, 1000);
-          }
-        }, 100); // 💡 1000(1초) 간격 대신 100(0.1초) 간격으로 촘촘히 감시하여 딜레이 방지
+            // (기존 로직 유지) 부저가 ACTIVE 상태라면 부저 잠금 해제
+            if (typeof buzzerStatus !== 'undefined' && buzzerStatus === 'ACTIVE' && (!currentUser || !currentUser.isAdmin)) {
+                if(typeof buzzerBtn !== 'undefined') {
+                    buzzerBtn.disabled = false;
+                    buzzerBtn.className = "relative z-10 w-56 h-56 md:w-72 md:h-72 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-3xl md:text-4xl shadow-2xl transition transform active:scale-95 flex items-center justify-center border-8 border-red-400 cursor-pointer animate-bounce";
+                    if(typeof buzzerStatusText !== 'undefined') buzzerStatusText.innerText = "🚨 지금 부저를 누르세요!";
+                }
+            }
+        }, 1000);
+    }
+}, 100);
       });
     }
 
@@ -1036,15 +1063,17 @@ window.activeTimerInterval = setInterval(() => {
 
     // 👨‍🏫 [방장/진행자용] 타이머 시작 엔진 (절대 시계 방식 적용)
 function startTimerAdmin() {
-      const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
-      const absoluteEndTime = Date.now() + (sec * 1000); // 💡 현재 시각 + 입력한 초(sec) = 절대 종료 시각 계산
+    const sec = parseInt(document.getElementById('timer-sec-input').value) || 5;
+    
+    // 💡 내 폰 시계가 아니라 '구글 서버의 현재 시각'을 기준으로 계산!
+    const trueNow = Date.now() + serverTimeOffset;
+    const absoluteEndTime = trueNow + (sec * 1000);
 
-      db.ref(`departments/${currentDept}/${currentRoom}/timerState`).set({
+    db.ref(`departments/${currentDept}/${currentRoom}/timerState`).set({
         duration: sec,
-        startTime: Date.now(),
-        endTime: absoluteEndTime, // ✨ 이 값이 추가되었습니다! 모두가 바라볼 '끝나는 시각'
-        actionId: Math.random()
-      });
+        endTime: absoluteEndTime, 
+        actionId: Math.random() // 새로운 타이머 신호
+    });
 }
 
     function openGroupModal() {
@@ -1054,6 +1083,7 @@ function startTimerAdmin() {
     function closeGroupModal() {
       document.getElementById('group-modal').classList.add('hidden');
     }
+
   </script>
 </body>
 </html>
